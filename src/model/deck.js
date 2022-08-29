@@ -475,7 +475,6 @@ export function GenDeckModelFn(
     let rightBorder = [];
     let leftCantil = [];
     let rightCantil = [];
-
     for (let i = 1; i < centerLineStations.length - 1; i++) {
         let mainPoint = centerLineStations[i].point;
         let key = centerLineStations[i].key;
@@ -544,10 +543,27 @@ export function GenDeckModelFn(
             }
         }
     }
+    let deckShapesDict_ = { upper: slabUpperLoft, left: leftCantil, right: rightCantil };
+    let deckShapesDict = { upper: [], left: [], right: [], lower: [] };
+    for (let loca in deckShapesDict_) {
+        let shapes = deckShapesDict_[loca];
+        shapes.forEach(shape => {
+            let isErr = false;
+            for (let pt of shape) {
+                if (Math.abs(pt.x) < 1e-1 && Math.abs(pt.y) < 1e-1) {
+                    isErr = true;
+                    break;
+                }
+            }
+            if (!isErr) {
+                deckShapesDict[loca].push(shape);
+            }
+        });
+    }
     deckPointDict["children"].push(
-        new Loft(slabUpperLoft, false, "Concrete", { key: "slabUpper", part: "concrete" }),
-        new Loft(leftCantil, false, "Concrete", { key: "slab0-1", part: "concrete" }),
-        new Loft(rightCantil, false, "Concrete", { key: "slab" + String(girderNum) + "-" + String(girderNum + 1), part: "concrete" })
+        new Loft(deckShapesDict.upper, false, "Concrete", { key: "slabUpper", part: "concrete" }),
+        new Loft(deckShapesDict.left, false, "Concrete", { key: "slab0-1", part: "concrete" }),
+        new Loft(deckShapesDict.right, false, "Concrete", { key: "slab" + String(girderNum) + "-" + String(girderNum + 1), part: "concrete" })
     );
     lowerLofts.push(leftCantil, rightCantil);
     for (let j = 0; j < girderStations.length; j++) {
@@ -757,8 +773,22 @@ export function GenDeckModelFn(
             dummyStation = station;
         }
         lowerLofts.push(slabLowerPoints);
+        // TODO: 선형데이터에 곡선정보 추가 시 슬래브 lower, upper, leftCantil, rightCantil의 첫번째 포인트가 거의 원점에 가까운 포인트가 생성되어
+        // TODO: 3d 모델의 형상이 이상해짐. 확인 후 수정 필요
+        for (let shape of slabLowerPoints) {
+            let isErr = false;
+            for (let pt of shape) {
+                if (Math.abs(pt.x) < 1e3 && Math.abs(pt.y) < 1e3) {
+                    isErr = true;
+                    break;
+                }
+            }
+            if (!isErr) {
+                deckShapesDict.lower.push(shape);
+            }
+        }
         deckPointDict["children"].push(
-            new Loft(slabLowerPoints, false, "Concrete", { key: "slab" + String(j + 1) + "-" + String(j + 2), part: "concrete" })
+            new Loft(deckShapesDict.lower, false, "Concrete", { key: "slab" + String(j + 1) + "-" + String(j + 2), part: "concrete" })
         );
     }
 
