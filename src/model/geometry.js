@@ -44,7 +44,6 @@ export function GenSteelBoxGeometry(steelBoxDict, initPoint) {
 
 export function GenBoltGeometry(Thickness, zPosition, rotationY, rotationX, point, bolt, initPoint) {
     let geometryArr = [];
-    let new_rotationY = rotationY + Math.PI / 2;
     // 볼트배치 자동계산 모듈 // 2020.7.7 by drlim
     let boltZ = bolt.isUpper ? zPosition + Thickness - bolt.l / 2 : zPosition + bolt.l / 2;
     for (let i in bolt.layout) {
@@ -53,11 +52,71 @@ export function GenBoltGeometry(Thickness, zPosition, rotationY, rotationX, poin
         var geometry = new THREE.CylinderBufferGeometry(radius, radius, bolt.t * 2 + bolt.l, 6, 1);
         geometry.rotateZ(Math.PI / 2);
         geometry.translate(-boltZ, bolt.layout[i][1], bolt.layout[i][0]);
-        geometry.rotateY(new_rotationY);
+        geometry.rotateY(rotationY + Math.PI / 2);
         geometry.rotateX(rotationX);
         geometry.rotateZ(point.zRotation);
         geometry.translate(point.x - initPoint.x, point.y - initPoint.y, point.z - initPoint.z);
         geometryArr.push(geometry);
     }
     return BufferGeometryUtils.mergeBufferGeometries(geometryArr);
+}
+
+export function GenStudGeometry(rotX, rotY, rotZ, points, stud, initPoint) {
+    let Geos = [];
+    let rotationX = rotX ? rotX : 0; //Math.atan(gradientX)
+    let rotationY = rotY ? rotY : 0; // Math.atan(gradientY)
+    for (let k = 0; k < points.length; k++) {
+        let geometry = new THREE.CylinderBufferGeometry(stud.dia / 2, stud.dia / 2, stud.height, 8, 1);
+        let geometry2 = new THREE.CylinderBufferGeometry(stud.headDia / 2, stud.headDia / 2, stud.headDepth, 8, 1);
+        let point = points[k];
+
+        geometry.translate(0, stud.height / 2, 0);
+        geometry.rotateX(Math.PI / 2 + rotationX);
+
+        geometry2.translate(0, stud.height - stud.headDepth / 2, 0);
+        geometry2.rotateX(Math.PI / 2 + rotationX);
+
+        if (rotZ) {
+            geometry.rotateY(rotationY);
+            geometry.rotateZ(rotZ);
+
+            geometry2.rotateY(rotationY);
+            geometry2.rotateZ(rotZ);
+        }
+        geometry.translate(point.x - initPoint.x, point.y - initPoint.y, point.z - initPoint.z);
+        geometry2.translate(point.x - initPoint.x, point.y - initPoint.y, point.z - initPoint.z);
+        Geos.push(geometry, geometry2);
+    }
+    return BufferGeometryUtils.mergeBufferGeometries(Geos);
+}
+
+export function GenBTConcStudGeometry(rotX, rotY, rotZ, points, stud, initPoint) {
+    let Geos = [];
+    let rotationX = rotX ? rotX : 0; //Math.atan(gradientX)
+    let rotationY = rotY ? rotY : 0; // Math.atan(gradientY)
+
+    for (let k = 0; k < points.length; k++) {
+        let geometry = new THREE.CylinderBufferGeometry(stud.dia / 2, stud.dia / 2, stud.height, 8, 1);
+        let geometry2 = new THREE.CylinderBufferGeometry(stud.headDia / 2, stud.headDia / 2, stud.headDepth, 6, 1);
+        let geometry3 = new THREE.CylinderBufferGeometry(stud.headDia / 2, stud.headDia / 2, stud.headDepth, 6, 1);
+        let point = points[k];
+
+        geometry.translate(0, stud.height / 2, 0);
+        geometry.rotateX(Math.PI / 2 + rotationX);
+
+        geometry2.translate(0, stud.height - stud.headDepth / 2, 0);
+        geometry2.rotateX(Math.PI / 2 + rotationX);
+
+        geometry3.translate(0, stud.headDepth / 2, 0);
+        geometry3.rotateX(Math.PI / 2 + rotationX);
+        let tempGeo = BufferGeometryUtils.mergeBufferGeometries([geometry, geometry2, geometry3]);
+        if (rotZ) {
+            tempGeo.rotateY(rotationY);
+            tempGeo.rotateZ(rotZ);
+        }
+        tempGeo.translate(point.x - initPoint.x, point.y - initPoint.y, point.z - initPoint.z);
+        Geos.push(tempGeo);
+    }
+
+    return BufferGeometryUtils.mergeBufferGeometries(Geos);
 }

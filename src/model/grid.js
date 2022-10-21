@@ -1,17 +1,16 @@
 import { IntersectionPointOnSpline, MainPointGenerator, splineProp, StPointToParallel, Alignment } from "@nexivil/package-modules";
+import { DegreeToRad } from "@nexivil/package-modules/src/module/basic";
 
 export function GenGridInfoFn(girderBaseInfo, girderLayout, seShape, gridInput) {
     let gridPointDict = {};
     let xbeamGridInfo = [];
     let girderStations = [];
     let centerLineStations = [];
-
     const alignment = girderLayout.alignment;
     const xbeamLayout = gridInput.xbeamLayout;
     const girderNumber = girderLayout.girderSplines.length;
     const blockOutH = girderBaseInfo.common.blockOutH;
     const blockOutL = girderBaseInfo.common.blockOutL;
-
     let pointName = "";
     let offset = 0;
     for (let k = 0; k < 8; k++) {
@@ -42,6 +41,7 @@ export function GenGridInfoFn(girderBaseInfo, girderLayout, seShape, gridInput) 
                 offset = -seShape.end.A;
                 break;
         }
+        // ["K"]
         let mainPt = k < 4 ? girderLayout.startPoint : girderLayout.endPoint;
         let parallelStPt = StPointToParallel(mainPt, offset, alignment);
         for (let i = 0; i < girderNumber; i++) {
@@ -51,6 +51,7 @@ export function GenGridInfoFn(girderBaseInfo, girderLayout, seShape, gridInput) 
         gridPointDict["CRK" + k] = parallelStPt;
     }
 
+    // ["S"]
     for (let k in girderLayout.gridKeyPoint) {
         //지점에 대한 그리드포인트
         let centerPoint = girderLayout.gridKeyPoint[k];
@@ -63,6 +64,7 @@ export function GenGridInfoFn(girderBaseInfo, girderLayout, seShape, gridInput) 
 
     const BenchMark = 0;
     const off = 1;
+    // ["BF", "BR", "BW", "H", "LC", "TF", "TR", "TW", "WF"]
     for (let key in gridInput.range) {
         if (key !== "LC") {
             for (let i = 0; i < gridInput.range[key].length; i++) {
@@ -87,6 +89,7 @@ export function GenGridInfoFn(girderBaseInfo, girderLayout, seShape, gridInput) 
             }
         }
     }
+    // ["D", "V", "SP"]
     for (let key in gridInput.point) {
         for (let i = 0; i < gridInput.point[key].length; i++) {
             for (let j = 0; j < gridInput.point[key][i].length; j++) {
@@ -98,7 +101,8 @@ export function GenGridInfoFn(girderBaseInfo, girderLayout, seShape, gridInput) 
                     if (elem[off] * 1 === 0) {
                         gridPointDict[pointName] = gridPointDict[elem[BenchMark]];
                     } else {
-                        let skew = elem[3] ? (elem[3] * Math.PI) / 180 : null;
+                        let skewDeg = elem[3];
+                        let skew = skewDeg ? DegreeToRad(skewDeg - 90) : 0;
                         let mainStation = gridPointDict[elem[BenchMark]].mainStation + elem[off] * 1;
                         let mainPoint = MainPointGenerator(mainStation, alignment, skew);
                         gridPointDict[pointName] = IntersectionPointOnSpline(girderLayout.girderSplines[i], mainPoint, alignment, true);
@@ -137,7 +141,8 @@ export function GenGridInfoFn(girderBaseInfo, girderLayout, seShape, gridInput) 
             gridPointDict["CRN" + i] = { ...point, skew };
             i++;
         } else if (st > k3Pt.station && st < k4Pt.station) {
-            gridPointDict["CRN" + i] = { ...point, skew: Math.PI / 2 };
+            // gridPointDict["CRN" + i] = { ...point, skew: Math.PI / 2 };
+            gridPointDict["CRN" + i] = { ...point, skew: 0 };
             i++;
         }
     });
@@ -269,11 +274,22 @@ export function GenGridInfoFn(girderBaseInfo, girderLayout, seShape, gridInput) 
                 girderStations[i][j]["point"]["spanLength"];
         }
     }
+    let g1GridKeys = Object.keys(gridPointDict).filter(key => key.includes("G1"));
+    let g2GridKeys = Object.keys(gridPointDict).filter(key => key.includes("G2"));
+    let g1Keys = g1GridKeys.map(key => key.slice(2));
+    let g2Keys = g2GridKeys.map(key => key.slice(2));
 
+    let g1Grids = g1GridKeys.map(key => {
+        return { name: key, point: gridPointDict[key] };
+    });
+    let g2Grids = g2GridKeys.map(key => {
+        return { name: key, point: gridPointDict[key] };
+    });
     return { gridPointDict, xbeamGridInfo, centerLineStations, girderStations };
 }
 
 export function GenDefaultGridPointDict(girderLayout, seShape) {
+    // girderLayout.girderSplines[0].points.forEach(pt => console.log("asdf", pt.skew));
     let nameToPointDict = {};
     let alignment = girderLayout.alignment;
     let pointName = "";

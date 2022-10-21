@@ -1,6 +1,6 @@
 import {
-    DrawCenterLine,
-    DrawMatchLine,
+    ToCenterLineDraw,
+    ToMatchLineDraw,
     GetRefPoint,
     IsPointInPolygon,
     Layout2D,
@@ -12,9 +12,9 @@ import {
     PointToGlobal,
     splineProp,
     Text,
-    ToDimAlign,
     Trim2D,
 } from "@nexivil/package-modules";
+import { ToDimCont } from "@nexivil/package-modules/src/temp";
 import { DrawGirderMiniMap, GenPartPlanDraw, GenPartSideDraw, GenWeldingDetailDraw, GetRoundedRect, GetWeldingInfo } from "./utils";
 
 export function GenBoxGirder2DFn(
@@ -141,10 +141,10 @@ export function GenBoxGirder2DFn(
         let boundaryAll = [...l1, ...l3.reverse()];
         let boundary1 = [...l1.reverse(), ...l2];
         let boundary2 = [...l2, ...l3];
-        if (mx < matchLines.length - 2) plan["draw"].push(...DrawMatchLine([l1[0], l3[0]], fontSize, "M.L."));
-        if (mx > 0) plan["draw"].push(...DrawMatchLine([l1[l1.length - 1], l3[l3.length - 1]], fontSize, "M.L."));
+        if (mx < matchLines.length - 2) plan["draw"].push(...ToMatchLineDraw([l1[0], l3[0]], fontSize, "M.L."));
+        if (mx > 0) plan["draw"].push(...ToMatchLineDraw([l1[l1.length - 1], l3[l3.length - 1]], fontSize, "M.L."));
 
-        plan["draw"].push(...DrawCenterLine(l2, fontSize, "상부플랜지", "하부플랜지"));
+        plan["draw"].push(...ToCenterLineDraw(l2, fontSize, "상부플랜지", "하부플랜지"));
         plan["draw"].push(...Trim2D(top, boundary1));
         plan["draw"].push(...Trim2D(bottom, boundary2));
         let startMargin = mx === 0 ? 100 : 0;
@@ -333,16 +333,16 @@ export function GenBoxGirder2DFn(
         let eDim = GetVerticalDimPoints(sectionPointDict, girderStations, eKey, 0);
 
         plan["dim"].push(
-            ToDimAlign(sDim.plan, fontSize, "DIM", false, true, srot, 0, 1),
-            ToDimAlign([sDim.plan[0], sDim.plan[sDim.plan.length - 1]], fontSize, "DIM", false, true, srot, 0, 2),
-            ToDimAlign(eDim.plan, fontSize, "DIM", false, false, erot, 0, 1),
-            ToDimAlign([eDim.plan[0], eDim.plan[eDim.plan.length - 1]], fontSize, "DIM", false, false, erot, 0, 2)
+            ToDimCont(sDim.plan, fontSize, "DIM", false, true, srot, 0, 1),
+            ToDimCont([sDim.plan[0], sDim.plan[sDim.plan.length - 1]], fontSize, "DIM", false, true, srot, 0, 2),
+            ToDimCont(eDim.plan, fontSize, "DIM", false, false, erot, 0, 1),
+            ToDimCont([eDim.plan[0], eDim.plan[eDim.plan.length - 1]], fontSize, "DIM", false, false, erot, 0, 2)
         );
         side2["dim"].push(
-            ToDimAlign(sDim.side, fontSize, "DIM", false, true, 0, 0, 1),
-            ToDimAlign([sDim.side[0], sDim.side[sDim.side.length - 1]], fontSize, "DIM", false, true, 0, 0, 2),
-            ToDimAlign(eDim.side, fontSize, "DIM", false, false, 0, 0, 1),
-            ToDimAlign([eDim.side[0], eDim.side[eDim.side.length - 1]], fontSize, "DIM", false, false, 0, 0, 2)
+            ToDimCont(sDim.side, fontSize, "DIM", false, true, 0, 0, 1),
+            ToDimCont([sDim.side[0], sDim.side[sDim.side.length - 1]], fontSize, "DIM", false, true, 0, 0, 2),
+            ToDimCont(eDim.side, fontSize, "DIM", false, false, 0, 0, 1),
+            ToDimCont([eDim.side[0], eDim.side[eDim.side.length - 1]], fontSize, "DIM", false, false, 0, 0, 2)
         );
 
         result.push(
@@ -456,12 +456,12 @@ export function GenBoxGirder2DFn(
             let boundary = [...l1.reverse(), ...l2];
             let boundary2 = [...l2, ...l3];
             if (mx < matchLines.length - 2) {
-                plan["draw"].push(...DrawMatchLine([l1[0], l3[0]], fontSize2, "M.L."));
+                plan["draw"].push(...ToMatchLineDraw([l1[0], l3[0]], fontSize2, "M.L."));
             }
             if (mx > 0) {
-                plan["draw"].push(...DrawMatchLine([l1[l1.length - 1], l3[l3.length - 1]], fontSize2, "M.L."));
+                plan["draw"].push(...ToMatchLineDraw([l1[l1.length - 1], l3[l3.length - 1]], fontSize2, "M.L."));
             }
-            plan["draw"].push(...DrawCenterLine(l2, fontSize2, "상부플랜지", "하부플랜지"));
+            plan["draw"].push(...ToCenterLineDraw(l2, fontSize2, "상부플랜지", "하부플랜지"));
             plan["draw"].push(...Trim2D(top, boundary));
             plan["draw"].push(...Trim2D(bottom, boundary2));
             let startMargin = mx === 0 ? 200 : 0;
@@ -720,17 +720,17 @@ export function GenBoxGirder2DFn(
             let sDim = GetVerticalDimPoints(sectionPointDict, [girderStations[my]], sKey, 0);
             let eDim = GetVerticalDimPoints(sectionPointDict, [girderStations[my]], eKey, 0);
             plan["dim"].push(
-                ToDimAlign(sDim.plan, fontSize, "DIM", false, true, srot, 0, 1),
-                ToDimAlign([sDim.plan[0], sDim.plan[sDim.plan.length - 1]], fontSize, "DIM", false, true, srot, 0, 2),
-                ToDimAlign(eDim.plan, fontSize, "DIM", false, false, erot, 0, 1),
-                ToDimAlign([eDim.plan[0], eDim.plan[eDim.plan.length - 1]], fontSize, "DIM", false, false, erot, 0, 2)
+                ToDimCont(sDim.plan, fontSize, "DIM", false, true, srot, 0, 1),
+                ToDimCont([sDim.plan[0], sDim.plan[sDim.plan.length - 1]], fontSize, "DIM", false, true, srot, 0, 2),
+                ToDimCont(eDim.plan, fontSize, "DIM", false, false, erot, 0, 1),
+                ToDimCont([eDim.plan[0], eDim.plan[eDim.plan.length - 1]], fontSize, "DIM", false, false, erot, 0, 2)
             );
 
             side2["dim"].push(
-                ToDimAlign(sDim.side, fontSize, "DIM", false, true, 0, 0, 1),
-                ToDimAlign([sDim.side[0], sDim.side[sDim.side.length - 1]], fontSize, "DIM", false, true, 0, 0, 2),
-                ToDimAlign(eDim.side, fontSize, "DIM", false, false, 0, 0, 1),
-                ToDimAlign([eDim.side[0], eDim.side[eDim.side.length - 1]], fontSize, "DIM", false, false, 0, 0, 2)
+                ToDimCont(sDim.side, fontSize, "DIM", false, true, 0, 0, 1),
+                ToDimCont([sDim.side[0], sDim.side[sDim.side.length - 1]], fontSize, "DIM", false, true, 0, 0, 2),
+                ToDimCont(eDim.side, fontSize, "DIM", false, false, 0, 0, 1),
+                ToDimCont([eDim.side[0], eDim.side[eDim.side.length - 1]], fontSize, "DIM", false, false, 0, 0, 2)
             );
 
             result.push(

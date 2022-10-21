@@ -1,6 +1,5 @@
-import { Extrude_rev, GetRefPoint, Hatch, Line, PointToGlobal, TwoPointsLength } from "@nexivil/package-modules";
+import { Extrude, GetRefPoint, Hatch, Line, PointToGlobal, TwoPointsLength } from "@nexivil/package-modules";
 import { THREE } from "global";
-import { CubeReflectionMapping } from "three";
 
 export function GenHPlate(
     points,
@@ -11,16 +10,15 @@ export function GenHPlate(
     xRotation,
     yRotation,
     points2D,
-    top2D,
-    side2D,
-    bottom2D,
+    top2D = null,
+    side2D = null,
+    bottom2D = null,
     holes = [],
     meta = {},
     add = {}
 ) {
-    const cosec = 1 / Math.sin(skew);
-    const cot = -1 / Math.tan(skew);
-    // let refPoint = GetRefPoint({ ...centerPoint, skew},true);
+    const cosec = 1 / Math.sin(skew + Math.PI / 2);
+    const cot = -1 / Math.tan(skew + Math.PI / 2);
 
     const rotationY = yRotation;
     const rotationX = xRotation;
@@ -108,12 +106,35 @@ export function GenHPlate(
 
     let option = {
         refPoint: { ...centerPoint, xRotation: xRotation, yRotation: yRotation },
-        initZ: z,
+        dz: z,
         holes,
     };
     let materialName = "Steel";
-    let result = new Extrude_rev(resultPoints, thickness, option, materialName, meta);
+    let result = new Extrude(resultPoints, thickness, option, materialName, meta);
     result.model = { sectionView: points2D, topView, sideView, bottomView };
+    Object.keys(add).forEach(key => (result[key] = add[key]));
+    return result;
+}
+
+export function GenHPlate_rev(points, centerPoint, thickness, z, skew, xRotation, yRotation, holes = [], meta = {}, add = {}, check = false) {
+    const cosec = 1 / Math.sin(skew + Math.PI / 2);
+    const cot = -1 / Math.tan(skew + Math.PI / 2);
+
+    let shapePts = [];
+    if (yRotation === Math.PI / 2) {
+        points.forEach(pt => shapePts.push({ x: pt.x, y: pt.y }));
+    } else {
+        points.forEach(pt => shapePts.push({ x: pt.x, y: pt.x * cot + pt.y * cosec }));
+    }
+
+    let option = {
+        refPoint: { ...centerPoint, xRotation, yRotation },
+        dz: z,
+        holes,
+    };
+    let materialName = "Steel";
+    let result = new Extrude(shapePts, thickness, option, materialName, meta, check);
+
     Object.keys(add).forEach(key => (result[key] = add[key]));
     return result;
 }
@@ -126,16 +147,16 @@ export function GenVPlate(
     scallopR,
     urib,
     lrib,
-    holePoints,
-    top2D,
-    side2D,
-    bottom2D,
+    holePoints = null,
+    top2D = null,
+    side2D = null,
+    bottom2D = null,
     meta = {},
     add = {}
 ) {
     let skew = centerPoint.skew;
-    let refPoint = GetRefPoint(centerPoint, true);
-    refPoint.yRotation = skew - Math.PI / 2;
+    let refPoint = GetRefPoint(centerPoint);
+    refPoint.yRotation = skew;
 
     const bl = points[0];
     const br = points[1];
@@ -145,7 +166,7 @@ export function GenVPlate(
     const gradient = (tr.y - tl.y) / (tr.x - tl.x);
     const gradient2 = (br.y - bl.y) / (br.x - bl.x);
 
-    const cosec = 1 / Math.sin(skew);
+    const cosec = 1 / Math.sin(skew + Math.PI / 2);
 
     let topView = null;
     let bottomView = null;
@@ -154,6 +175,7 @@ export function GenVPlate(
     if (holePoints) {
         holePoints.forEach(pt => newHolePoints.push({ x: pt.x * cosec, y: pt.y }));
     }
+
     if (top2D) {
         let pt1 = { x: points[top2D[0]].x, y: 0 };
         let pt2 = { x: points[top2D[1]].x, y: 0 };
@@ -308,8 +330,137 @@ export function GenVPlate(
         holes: [newHolePoints],
     };
     let materialName = "Steel";
-    let result = new Extrude_rev(resultPoints, Thickness, option, materialName, meta);
+    let result = new Extrude(resultPoints, Thickness, option, materialName, meta);
     result.model = { sectionView: sectionPts, topView, sideView, bottomView };
+    Object.keys(add).forEach(key => (result[key] = add[key]));
+
+    return result;
+}
+
+export function GenVPlate_rev(points, centerPoint, Thickness, scallopVertex, scallopR, urib, lrib, holePoints = [], meta = {}, add = {}) {
+    let skew = centerPoint.skew;
+    let refPoint = GetRefPoint(centerPoint);
+    refPoint.yRotation = skew;
+
+    const bl = points[0];
+    const br = points[1];
+    const tl = points[3];
+    const tr = points[2];
+
+    const gradient = (tr.y - tl.y) / (tr.x - tl.x);
+    const gradient2 = (br.y - bl.y) / (br.x - bl.x);
+
+    const cosec = 1 / Math.sin(skew + Math.PI / 2);
+
+    let newHolePoints = [];
+    if (holePoints) {
+        holePoints.forEach(pt => newHolePoints.push({ x: pt.x * cosec, y: pt.y }));
+    }
+
+    let mainPlate = [];
+    points.forEach(pt => mainPlate.push({ x: pt.x * cosec, y: pt.y }));
+
+    let upperPoints = [];
+    if (urib) {
+        for (let i = 0; i < urib.layout.length; i++) {
+            upperPoints.push({
+                x: urib.layout[i] * cosec - urib.ribHoleD,
+                y: tl.y + gradient * (urib.layout[i] - urib.ribHoleD - tl.x),
+            });
+            let curve = new THREE.ArcCurve(
+                urib.layout[i] * cosec,
+                tl.y + gradient * (urib.layout[i] - tl.x) - urib.height,
+                urib.ribHoleR,
+                Math.PI,
+                0,
+                false
+            );
+            let dummyVectors = curve.getPoints(8);
+            for (let i = 0; i < dummyVectors.length; i++) {
+                upperPoints.push({ x: dummyVectors[i].x, y: dummyVectors[i].y });
+            }
+            upperPoints.push({
+                x: urib.layout[i] * cosec + urib.ribHoleD,
+                y: tl.y + gradient * (urib.layout[i] + urib.ribHoleD - tl.x),
+            });
+        }
+    }
+    let lowerPoints = [];
+    if (lrib) {
+        if (lrib.type == 0) {
+            for (let i = 0; i < lrib.layout.length; i++) {
+                lowerPoints.push({
+                    x: lrib.layout[i] * cosec - lrib.ribHoleD,
+                    y: bl.y + gradient2 * (lrib.layout[i] - lrib.ribHoleD - bl.x),
+                });
+                let curve = new THREE.ArcCurve(
+                    lrib.layout[i] * cosec,
+                    bl.y + gradient2 * (lrib.layout[i] - bl.x) + lrib.height,
+                    lrib.ribHoleR,
+                    Math.PI,
+                    0,
+                    true
+                );
+                let dummyVectors = curve.getPoints(8);
+                for (let i = 0; i < dummyVectors.length; i++) {
+                    lowerPoints.push({ x: dummyVectors[i].x, y: dummyVectors[i].y });
+                }
+                lowerPoints.push({
+                    x: lrib.layout[i] * cosec + lrib.ribHoleD,
+                    y: bl.y + gradient2 * (lrib.layout[i] + lrib.ribHoleD - bl.x),
+                });
+            }
+        } else if (lrib.type === 1) {
+            for (let i = 0; i < lrib.layout.length; i++) {
+                let dummyPoints = [];
+                dummyPoints.push(
+                    {
+                        x: lrib.layout[i] * cosec - lrib.thickness / 2 - 1,
+                        y: bl.y + gradient2 * (lrib.layout[i] - lrib.thickness / 2 - 1 - bl.x),
+                    },
+                    {
+                        x: lrib.layout[i] * cosec - lrib.thickness / 2 - 1,
+                        y: bl.y + gradient2 * (lrib.layout[i] - bl.x) + lrib.height + 1,
+                    },
+                    {
+                        x: lrib.layout[i] * cosec + lrib.thickness / 2 + 1,
+                        y: bl.y + gradient2 * (lrib.layout[i] - bl.x) + lrib.height + 1,
+                    },
+                    {
+                        x: lrib.layout[i] * cosec + lrib.thickness / 2 + 1,
+                        y: bl.y + gradient2 * (lrib.layout[i] + lrib.thickness / 2 + 1 - bl.x),
+                    }
+                );
+                lowerPoints.push(...scallop(bl, dummyPoints[0], dummyPoints[1], 10, 1));
+                lowerPoints.push(dummyPoints[1], dummyPoints[2]);
+                lowerPoints.push(...scallop(dummyPoints[2], dummyPoints[3], br, 10, 1));
+            }
+        }
+    }
+    let resultPoints = [];
+    for (let i = 0; i < points.length; i++) {
+        if (scallopVertex.includes(i)) {
+            let former = i === 0 ? mainPlate.length - 1 : i - 1;
+            let latter = i === mainPlate.length - 1 ? 0 : i + 1;
+            resultPoints.push(...scallop(mainPlate[former], mainPlate[i], mainPlate[latter], scallopR, 4));
+        } else {
+            resultPoints.push(mainPlate[i]);
+        }
+        if (i === 0) {
+            resultPoints.push(...lowerPoints);
+        } else if (i === 2) {
+            resultPoints.push(...upperPoints.reverse());
+        }
+    }
+    const sin = skew === Math.PI ? 1 : Math.sin(skew);
+    let sectionPts = [];
+    resultPoints.forEach(pt => sectionPts.push({ x: pt.x * sin, y: pt.y }));
+    let option = {
+        refPoint: { ...refPoint },
+        holes: [newHolePoints],
+    };
+    let materialName = "Steel";
+    let result = new Extrude(resultPoints, Thickness, option, materialName, meta);
     Object.keys(add).forEach(key => (result[key] = add[key]));
 
     return result;
@@ -916,7 +1067,7 @@ export function ToGlobalPoint2(Point, node2D) {
         y: 0,
         z: 0,
     };
-    let skew = Point.skew ? Point.skew : 90;
+    let skew = Point.skew ? Point.skew : 0;
     const cos = Point.normalCos;
     const sin = Point.normalSin;
     // let skewCot = 0;

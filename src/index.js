@@ -8,9 +8,13 @@ import {
     GenDefaultETCPartData,
     GenDiaphragmModel,
     GenGridInfo,
+    GenHStiffModel,
+    GenJackupModel,
     GenSectionPointDict,
     GenSpliceModel,
     GenSteelBoxModel,
+    GenStudModel,
+    GenSupportModel,
     GenVStiffModel,
     GenXBeamModel,
 } from "./model";
@@ -49,12 +53,19 @@ LiteGraph.registerNodeType("model/GenDefaultETCPartData", GenDefaultETCPartData)
 LiteGraph.registerNodeType("model/GenSteelBoxModel", GenSteelBoxModel);
 // diaphragm
 LiteGraph.registerNodeType("model/GenDiaphragmModel", GenDiaphragmModel);
-// vertical stiffner
+// stiffner
 LiteGraph.registerNodeType("model/GenVStiffModel", GenVStiffModel);
+LiteGraph.registerNodeType("model/GenHStiffModel", GenHStiffModel);
 // xbeam
 LiteGraph.registerNodeType("model/GenXBeamModel", GenXBeamModel);
 // splice
 LiteGraph.registerNodeType("model/GenSpliceModel", GenSpliceModel);
+// stud
+LiteGraph.registerNodeType("model/GenStudModel", GenStudModel);
+// jackup
+LiteGraph.registerNodeType("model/GenJackupModel", GenJackupModel);
+// support
+LiteGraph.registerNodeType("model/GenSupportModel", GenSupportModel);
 // deck
 LiteGraph.registerNodeType("model/GenDeckModel", GenDeckModel);
 LiteGraph.registerNodeType("model/GenBarrierModel", GenBarrierModel);

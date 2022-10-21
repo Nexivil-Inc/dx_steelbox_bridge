@@ -1,4 +1,5 @@
-import { GetFilletPoints2D, GetRefPoint, PointToGlobal, PointToLocal, RefPoint, ToDimAlign } from "@nexivil/package-modules";
+import { GetFilletPoints2D, GetRefPoint, PointToGlobal, PointToLocal, RefPoint } from "@nexivil/package-modules";
+import { ToDimCont } from "@nexivil/package-modules/src/temp";
 import { LatheBufferGeometry } from "three";
 import { plateSectionRef } from "../reference/plate";
 import { GenIBeamJointDict } from "./splice";
@@ -141,10 +142,12 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
     let cw = centerPoint.normalCos * vec.y - centerPoint.normalSin * vec.x > 0 ? 1 : -1; // 반시계방향의 경우 1
     let dotVec = (centerPoint.normalCos * vec.x + centerPoint.normalSin * vec.y).toFixed(4) * 1;
     let rad = cw * Math.acos(dotVec);
-    centerPoint.skew = Math.PI / 2 + cw * Math.acos(dotVec);
+    // centerPoint.skew = Math.PI / 2 + cw * Math.acos(dotVec);
+    centerPoint.skew = cw * Math.acos(dotVec);
     let refCenterPoint = GetRefPoint(centerPoint);
 
     const rightAngle = Math.PI / 2;
+    // const rightAngle = 0;
 
     //폐합시를 고려하여 예외처리 필요
     let ufl, ufr;
@@ -179,6 +182,10 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
         { x: tl.x + xs.bracketLength, y: ufl.y + uGradient * (xs.bracketLength - (ufl.x - tl.x)) },
         ufl,
     ];
+
+    let webBracketMeta = { part: partKey, key: "webBracket" };
+    let stiffnerMeta = { part: partKey, key: "stiffner" };
+    let flangeBracketMeta = { part: partKey, key: "flangeBracket" };
 
     let webBracket0Meta = { part: partKey, key: "webBracket0" };
     let webBracket0Add = {
@@ -240,7 +247,7 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
         [0, 3],
         null,
         [1, 2],
-        webBracket0Meta,
+        webBracketMeta,
         webBracket0Add
     );
     result["children"].push(webBracket0Model);
@@ -298,7 +305,7 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
         null,
         null,
         null,
-        stiffner0Meta,
+        stiffnerMeta,
         stiffner0Add
     );
     result["children"].push(stiffner0Model);
@@ -342,7 +349,7 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
         dimension: {},
     };
     let leftCp = new RefPoint({ ...gcp }, { x: vec.x, y: vec.y, z: 0 });
-    let leftModel = GenHPlate(lPlate, leftCp, 12, -12, Math.PI / 2, 0, lrot, lPlateSection, false, false, null, null, leftMeta, leftAdd);
+    let leftModel = GenHPlate(lPlate, leftCp, 12, -12, 0, 0, lrot, lPlateSection, false, false, null, null, leftMeta, leftAdd);
     result["children"].push(leftModel);
 
     let rwebPlate = [
@@ -352,7 +359,6 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
         { x: tr.x - xs.bracketLength, y: ufr.y - uGradient * (xs.bracketLength - (tr.x - ufr.x)) },
         ufr,
     ];
-
     let webBracket1Meta = { part: partKey, key: "webBracket1" };
     let webBracket1Add = {
         properties: {},
@@ -412,7 +418,7 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
         [0, 3],
         null,
         [1, 2],
-        webBracket1Meta,
+        webBracketMeta,
         webBracket1Add
     );
     result["children"].push(webBracket1Model);
@@ -424,7 +430,6 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
         { x: tr.x - xs.bracketLength, y: tr.y - xs.webHeight - xs.flangeThickness - lGradient * xs.bracketLength - 30 },
         { x: tr.x - xs.bracketLength, y: tr.y - xs.webHeight - xs.flangeThickness - lGradient * xs.bracketLength },
     ];
-
     let stiffner1Meta = { part: partKey, key: "stiffner1" };
     let stiffner1Add = {
         properties: {},
@@ -470,7 +475,7 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
         null,
         null,
         null,
-        stiffner1Meta,
+        stiffnerMeta,
         stiffner1Add
     );
     result["children"].push(stiffner1Model);
@@ -517,7 +522,7 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
         rightCp,
         12,
         -12,
-        Math.PI / 2,
+        0,
         0,
         rrot,
         GenHPlateSide(-rL / 2, rL / 2, 12, -12, rcp, rrot, rightAngle, rightAngle),
@@ -532,7 +537,7 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
 
     let bracketPoint = [lstiff[0], rstiff[0], ufl, ufr];
     let bracketModelList = [];
-    let skewSin = (Math.sin(((centerPoint.skew - 90) * Math.PI) / 180) * xs.flangeWidth) / 2;
+    let skewSin = (Math.sin((centerPoint.skew * Math.PI) / 180) * xs.flangeWidth) / 2;
     for (let i = 0; i < 4; i++) {
         let sign = i % 2 === 0 ? 1 : -1;
         let grad = i < 2 ? lRad : uRad;
@@ -612,7 +617,7 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
             false,
             !top2D,
             null,
-            bracketMeta,
+            flangeBracketMeta,
             bracketAdd
         );
         result["children"].push(bracketModel);
@@ -684,11 +689,15 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
     );
     result["children"].push(lflangeModel);
 
+    // 이음부 모델
     let joint = GenIBeamJointDict(webPlate, centerPoint, xs, wBolt, fBolt);
     for (let i in joint) {
+        let splitKey = i.split("");
+        let strKey = splitKey.filter(str => isNaN(str * 1));
+        let keyName = strKey.join("");
         let matName = i.includes("Bolt") ? "Bolt" : "Steel";
         let model = joint[i];
-        model.meta = { part: partKey, key: i, material: matName };
+        model.meta = { part: partKey, key: keyName, material: matName };
         model.properties = {};
         model.weld = {};
         model.textLabel = {};
@@ -780,7 +789,7 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
         section: section,
         dimension: {
             sectionView: [
-                ToDimAlign(
+                ToDimCont(
                     [sectionTopDimPoints[0], sectionTopDimPoints[sectionTopDimPoints.length - 1]],
                     fontSize,
                     layer,
@@ -790,8 +799,8 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
                     topIndex ? 0 : 1,
                     2
                 ),
-                ToDimAlign(sectionTopDimPoints, fontSize, layer, true, true, 0, topIndex ? 0 : sectionTopDimPoints.length - 1, 1),
-                ToDimAlign(
+                ToDimCont(sectionTopDimPoints, fontSize, layer, true, true, 0, topIndex ? 0 : sectionTopDimPoints.length - 1, 1),
+                ToDimCont(
                     [sectionBottomDimPoints[0], sectionBottomDimPoints[sectionBottomDimPoints.length - 1]],
                     fontSize,
                     layer,
@@ -801,33 +810,24 @@ function GenXBeam_Box(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNodekey
                     bottomIndex ? 0 : 1,
                     2
                 ),
-                ToDimAlign(sectionBottomDimPoints, fontSize, layer, true, false, 0, bottomIndex ? 0 : sectionBottomDimPoints.length - 1, 1),
-                ToDimAlign([sectionLeftDimPoints[0], sectionLeftDimPoints[sectionLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
-                ToDimAlign(sectionLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
-                ToDimAlign(sectionRightDimPoints, fontSize, layer, false, true, 0, 0, 4),
-                ToDimAlign(
-                    [sectionRightDimPoints[0], sectionRightDimPoints[sectionRightDimPoints.length - 1]],
-                    fontSize,
-                    layer,
-                    false,
-                    true,
-                    0,
-                    0,
-                    3
-                ),
+                ToDimCont(sectionBottomDimPoints, fontSize, layer, true, false, 0, bottomIndex ? 0 : sectionBottomDimPoints.length - 1, 1),
+                ToDimCont([sectionLeftDimPoints[0], sectionLeftDimPoints[sectionLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
+                ToDimCont(sectionLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
+                ToDimCont(sectionRightDimPoints, fontSize, layer, false, true, 0, 0, 4),
+                ToDimCont([sectionRightDimPoints[0], sectionRightDimPoints[sectionRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 3),
                 ,
             ],
             topView: [
-                ToDimAlign([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
-                ToDimAlign(topLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
-                ToDimAlign([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
-                ToDimAlign(topRightDimPoints, fontSize, layer, false, true, 0, 0, 3),
+                ToDimCont([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
+                ToDimCont(topLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
+                ToDimCont([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
+                ToDimCont(topRightDimPoints, fontSize, layer, false, true, 0, 0, 3),
             ],
             bottomView: [
-                ToDimAlign([bottomLeftDimPoints[0], bottomLeftDimPoints[bottomLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
-                ToDimAlign(bottomLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
-                ToDimAlign([bottomRightDimPoints[0], bottomRightDimPoints[bottomRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
-                ToDimAlign(bottomRightDimPoints, fontSize, layer, false, true, 0, 0, 3),
+                ToDimCont([bottomLeftDimPoints[0], bottomLeftDimPoints[bottomLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
+                ToDimCont(bottomLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
+                ToDimCont([bottomRightDimPoints[0], bottomRightDimPoints[bottomRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
+                ToDimCont(bottomRightDimPoints, fontSize, layer, false, true, 0, 0, 3),
             ],
         },
     });
@@ -872,7 +872,7 @@ function GenXBeam_PlateBottom(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, 
     };
     let cw = centerPoint.normalCos * vec.y - centerPoint.normalSin * vec.x > 0 ? 1 : -1; // 반시계방향의 경우 1
     let dotVec = (centerPoint.normalCos * vec.x + centerPoint.normalSin * vec.y).toFixed(4) * 1;
-    centerPoint.skew = Math.PI / 2 + cw * Math.acos(dotVec);
+    centerPoint.skew = cw * Math.acos(dotVec);
     let refCenterPoint = GetRefPoint(centerPoint);
 
     //폐합시를 고려하여 예외처리 필요
@@ -1160,7 +1160,7 @@ function GenXBeam_PlateBottom(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, 
 
     let bracketPoint = [lwebPlate[0], rwebPlate[0], lfl, lfr];
     let bracketModelList = [];
-    let skewSin = (Math.sin(centerPoint.skew - Math.PI / 2) * xs.flangeWidth) / 2;
+    let skewSin = (Math.sin(centerPoint.skew) * xs.flangeWidth) / 2;
     for (let i = 0; i < 4; i++) {
         let sign = i % 2 === 0 ? 1 : -1;
         let grad = i < 2 ? uRad : lRad;
@@ -1406,7 +1406,7 @@ function GenXBeam_PlateBottom(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, 
         section: section,
         dimension: {
             sectionView: [
-                ToDimAlign(
+                ToDimCont(
                     [sectionTopDimPoints[0], sectionTopDimPoints[sectionTopDimPoints.length - 1]],
                     fontSize,
                     layer,
@@ -1416,8 +1416,8 @@ function GenXBeam_PlateBottom(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, 
                     topIndex ? 0 : 1,
                     2
                 ),
-                ToDimAlign(sectionTopDimPoints, fontSize, layer, true, true, 0, topIndex ? 0 : sectionTopDimPoints.length - 1, 1),
-                ToDimAlign(
+                ToDimCont(sectionTopDimPoints, fontSize, layer, true, true, 0, topIndex ? 0 : sectionTopDimPoints.length - 1, 1),
+                ToDimCont(
                     [sectionBottomDimPoints[0], sectionBottomDimPoints[sectionBottomDimPoints.length - 1]],
                     fontSize,
                     layer,
@@ -1427,33 +1427,24 @@ function GenXBeam_PlateBottom(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, 
                     bottomIndex ? 0 : 1,
                     2
                 ),
-                ToDimAlign(sectionBottomDimPoints, fontSize, layer, true, false, 0, bottomIndex ? 0 : sectionBottomDimPoints.length - 1, 1),
-                ToDimAlign([sectionLeftDimPoints[0], sectionLeftDimPoints[sectionLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
-                ToDimAlign(sectionLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
-                ToDimAlign(sectionRightDimPoints, fontSize, layer, false, true, 0, 0, 4),
-                ToDimAlign(
-                    [sectionRightDimPoints[0], sectionRightDimPoints[sectionRightDimPoints.length - 1]],
-                    fontSize,
-                    layer,
-                    false,
-                    true,
-                    0,
-                    0,
-                    3
-                ),
+                ToDimCont(sectionBottomDimPoints, fontSize, layer, true, false, 0, bottomIndex ? 0 : sectionBottomDimPoints.length - 1, 1),
+                ToDimCont([sectionLeftDimPoints[0], sectionLeftDimPoints[sectionLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
+                ToDimCont(sectionLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
+                ToDimCont(sectionRightDimPoints, fontSize, layer, false, true, 0, 0, 4),
+                ToDimCont([sectionRightDimPoints[0], sectionRightDimPoints[sectionRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 3),
                 ,
             ],
             topView: [
-                ToDimAlign([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
-                ToDimAlign(topLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
-                ToDimAlign([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
-                ToDimAlign(topRightDimPoints, fontSize, layer, false, true, 0, 0, 3),
+                ToDimCont([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
+                ToDimCont(topLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
+                ToDimCont([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
+                ToDimCont(topRightDimPoints, fontSize, layer, false, true, 0, 0, 3),
             ],
             bottomView: [
-                ToDimAlign([bottomLeftDimPoints[0], bottomLeftDimPoints[bottomLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
-                ToDimAlign([bottomRightDimPoints[0], bottomRightDimPoints[bottomRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
-                ToDimAlign([bottomRightDimPoints[0], bottomRightDimPoints[bottomRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
-                ToDimAlign(bottomRightDimPoints, fontSize, layer, false, true, 0, 0, 3),
+                ToDimCont([bottomLeftDimPoints[0], bottomLeftDimPoints[bottomLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
+                ToDimCont([bottomRightDimPoints[0], bottomRightDimPoints[bottomRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
+                ToDimCont([bottomRightDimPoints[0], bottomRightDimPoints[bottomRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
+                ToDimCont(bottomRightDimPoints, fontSize, layer, false, true, 0, 0, 3),
             ],
         },
     });
@@ -1497,7 +1488,8 @@ export function GenXBeam_PlateCenter(iPoint, jPoint, iSectionPoint, jSectionPoin
     };
     let cw = centerPoint.normalCos * vec.y - centerPoint.normalSin * vec.x > 0 ? 1 : -1; // 반시계방향의 경우 1
     let dotVec = (centerPoint.normalCos * vec.x + centerPoint.normalSin * vec.y).toFixed(4) * 1;
-    centerPoint.skew = Math.PI / 2 + cw * Math.acos(dotVec);
+    // centerPoint.skew = Math.PI / 2 + cw * Math.acos(dotVec);
+    centerPoint.skew = cw * Math.acos(dotVec);
     let refCenterPoint = GetRefPoint(centerPoint);
 
     //폐합시를 고려하여 예외처리 필요
@@ -1790,7 +1782,8 @@ export function GenXBeam_PlateCenter(iPoint, jPoint, iSectionPoint, jSectionPoin
 
     let bracketPoint = [lwebPlate[0], rwebPlate[0], lwebPlate[1], rwebPlate[1]];
     let bracketModelList = [];
-    let skewSin = (Math.sin(centerPoint.skew - Math.PI / 2) * xs.flangeWidth) / 2;
+    // let skewSin = (Math.sin(centerPoint.skew - Math.PI / 2) * xs.flangeWidth) / 2;
+    let skewSin = (Math.sin(centerPoint.skew) * xs.flangeWidth) / 2;
     for (let i = 0; i < 4; i++) {
         let sign = i % 2 === 0 ? 1 : -1;
         let grad = lRad;
@@ -2060,7 +2053,7 @@ export function GenXBeam_PlateCenter(iPoint, jPoint, iSectionPoint, jSectionPoin
         section: section,
         dimension: {
             sectionView: [
-                ToDimAlign(
+                ToDimCont(
                     [sectionTopDimPoints[0], sectionTopDimPoints[sectionTopDimPoints.length - 1]],
                     fontSize,
                     layer,
@@ -2070,8 +2063,8 @@ export function GenXBeam_PlateCenter(iPoint, jPoint, iSectionPoint, jSectionPoin
                     topIndex ? 0 : 1,
                     2
                 ),
-                ToDimAlign(sectionTopDimPoints, fontSize, layer, true, true, 0, topIndex ? 0 : sectionTopDimPoints.length - 1, 1),
-                ToDimAlign(
+                ToDimCont(sectionTopDimPoints, fontSize, layer, true, true, 0, topIndex ? 0 : sectionTopDimPoints.length - 1, 1),
+                ToDimCont(
                     [sectionBottomDimPoints[0], sectionBottomDimPoints[sectionBottomDimPoints.length - 1]],
                     fontSize,
                     layer,
@@ -2081,33 +2074,24 @@ export function GenXBeam_PlateCenter(iPoint, jPoint, iSectionPoint, jSectionPoin
                     bottomIndex ? 0 : 1,
                     2
                 ),
-                ToDimAlign(sectionBottomDimPoints, fontSize, layer, true, false, 0, bottomIndex ? 0 : sectionBottomDimPoints.length - 1, 1),
-                ToDimAlign([sectionLeftDimPoints[0], sectionLeftDimPoints[sectionLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
-                ToDimAlign(sectionLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
-                ToDimAlign(sectionRightDimPoints, fontSize, layer, false, true, 0, 0, 4),
+                ToDimCont(sectionBottomDimPoints, fontSize, layer, true, false, 0, bottomIndex ? 0 : sectionBottomDimPoints.length - 1, 1),
+                ToDimCont([sectionLeftDimPoints[0], sectionLeftDimPoints[sectionLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
+                ToDimCont(sectionLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
+                ToDimCont(sectionRightDimPoints, fontSize, layer, false, true, 0, 0, 4),
 
-                ToDimAlign(
-                    [sectionRightDimPoints[0], sectionRightDimPoints[sectionRightDimPoints.length - 1]],
-                    fontSize,
-                    layer,
-                    false,
-                    true,
-                    0,
-                    0,
-                    3
-                ),
+                ToDimCont([sectionRightDimPoints[0], sectionRightDimPoints[sectionRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 3),
             ],
             topView: [
-                ToDimAlign([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
-                ToDimAlign(topLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
-                ToDimAlign([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
-                ToDimAlign(topRightDimPoints, fontSize, layer, false, true, 0, 0, 3),
+                ToDimCont([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
+                ToDimCont(topLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
+                ToDimCont([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
+                ToDimCont(topRightDimPoints, fontSize, layer, false, true, 0, 0, 3),
             ],
             bottomView: [
-                ToDimAlign([bottomLeftDimPoints[0], bottomLeftDimPoints[bottomLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
-                ToDimAlign(bottomLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
-                ToDimAlign([bottomRightDimPoints[0], bottomRightDimPoints[bottomRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
-                ToDimAlign(bottomRightDimPoints, fontSize, layer, false, true, 0, 0, 3),
+                ToDimCont([bottomLeftDimPoints[0], bottomLeftDimPoints[bottomLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
+                ToDimCont(bottomLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
+                ToDimCont([bottomRightDimPoints[0], bottomRightDimPoints[bottomRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
+                ToDimCont(bottomRightDimPoints, fontSize, layer, false, true, 0, 0, 3),
             ],
         },
     });

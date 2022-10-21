@@ -1,5 +1,6 @@
-import { THREE } from "global";
-import { Extrude, Extrude_rev, GetFilletPoints2D, GetRefPoint, PointToGlobal, ToDimAlign } from "@nexivil/package-modules";
+import {} from "global";
+import { GetFilletPoints2D, GetRefPoint, PointToGlobal } from "@nexivil/package-modules";
+import { ToDimCont } from "@nexivil/package-modules/src/temp";
 import { plateSectionRef } from "../reference/plate";
 import { GenVPlate, GenHPlate, GetPlateRestPoint, GetSectionDimensionDict, GetWeldingPoint, scallop, SectionPointToSectionView } from "./utils";
 
@@ -19,19 +20,19 @@ export function GenDiaphragmModelFn(gridPoint, sectionPointDict, diaphragmLayout
                 let sectionPoint = sectionPointDict[gridkey].forward;
                 let dia = diaFnMap[diaSectionName](sectionPoint, gridPoint[gridkey], diaSection, gridkey, diaSectionName, diaSectionDict);
                 result["children"].push(...dia.children);
-                result["parent"].push(...dia.parent);
-                xbData = dia["parent"][0].data;
-                xbSection = dia["parent"][0].section;
-                if (xbData && xbSection) {
-                    xbeamData.push({
-                        inode: gridkey + "L",
-                        jnode: gridkey + "R",
-                        key: gridkey + "X",
-                        isKframe: false,
-                        data: xbData,
-                        section: xbSection,
-                    });
-                }
+                // result["parent"].push(...dia.parent);
+                // xbData = dia["parent"][0].data;
+                // xbSection = dia["parent"][0].section;
+                // if (xbData && xbSection) {
+                //     xbeamData.push({
+                //         inode: gridkey + "L",
+                //         jnode: gridkey + "R",
+                //         key: gridkey + "X",
+                //         isKframe: false,
+                //         data: xbData,
+                //         section: xbSection,
+                //     });
+                // }
             }
         }
     }
@@ -538,26 +539,26 @@ function GenDiaphragm_PlateBottom(sectionPoint, point, diaSection, gridkey, diaS
         },
         dimension: {
             sectionView: [
-                ToDimAlign([sd.top[0], sd.top[sd.top.length - 1]], fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : 1, 2),
-                ToDimAlign(sd.top, fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : sd.top.length - 1, 1),
-                ToDimAlign([sd.bottom[0], sd.bottom[sd.bottom.length - 1]], fontSize, "DIM", true, false, 0, 0, 2),
-                ToDimAlign(sd.bottom, fontSize, "DIM", true, false, 0, 0, 1),
-                ToDimAlign(sd.left, fontSize, "DIM", false, false, 0, 0, 4),
-                ToDimAlign([...sd.left, ...sectionLeftDimPoints], fontSize, "DIM", false, false, 0, 0, 3),
-                ToDimAlign(sd.right, fontSize, "DIM", false, true, 0, 0, 4),
-                ToDimAlign([...sd.right, ...sectionRightDimPoints], fontSize, "DIM", false, true, 0, 0, 3),
+                ToDimCont([sd.top[0], sd.top[sd.top.length - 1]], fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : 1, 2),
+                ToDimCont(sd.top, fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : sd.top.length - 1, 1),
+                ToDimCont([sd.bottom[0], sd.bottom[sd.bottom.length - 1]], fontSize, "DIM", true, false, 0, 0, 2),
+                ToDimCont(sd.bottom, fontSize, "DIM", true, false, 0, 0, 1),
+                ToDimCont(sd.left, fontSize, "DIM", false, false, 0, 0, 4),
+                ToDimCont([...sd.left, ...sectionLeftDimPoints], fontSize, "DIM", false, false, 0, 0, 3),
+                ToDimCont(sd.right, fontSize, "DIM", false, true, 0, 0, 4),
+                ToDimCont([...sd.right, ...sectionRightDimPoints], fontSize, "DIM", false, true, 0, 0, 3),
             ],
             topView: [
-                ToDimAlign([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
-                ToDimAlign(topLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
-                ToDimAlign([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
-                ToDimAlign(topRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
+                ToDimCont([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
+                ToDimCont(topLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
+                ToDimCont([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
+                ToDimCont(topRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
             ],
             bottomView: [
-                ToDimAlign([bottomLeftDimPoints[0], bottomLeftDimPoints[bottomLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
-                ToDimAlign(bottomLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
-                ToDimAlign([bottomRightDimPoints[0], bottomRightDimPoints[bottomRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
-                ToDimAlign(bottomRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
+                ToDimCont([bottomLeftDimPoints[0], bottomLeftDimPoints[bottomLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
+                ToDimCont(bottomLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
+                ToDimCont([bottomRightDimPoints[0], bottomRightDimPoints[bottomRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
+                ToDimCont(bottomRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
             ],
         },
     };
@@ -965,26 +966,26 @@ function GenDiaphragm_PlateCenter(sectionPoint, point, diaSection, gridkey, diaS
         },
         dimension: {
             sectionView: [
-                ToDimAlign([sd.top[0], sd.top[sd.top.length - 1]], fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : 1, 2),
-                ToDimAlign(sd.top, fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : sd.top.length - 1, 1),
-                ToDimAlign([sd.bottom[0], sd.bottom[sd.bottom.length - 1]], fontSize, "DIM", true, false, 0, 0, 2),
-                ToDimAlign(sd.bottom, fontSize, "DIM", true, false, 0, 0, 1),
-                ToDimAlign(sd.left, fontSize, "DIM", false, false, 0, 0, 4),
-                ToDimAlign([...sd.left, ...sectionLeftDimPoints], fontSize, "DIM", false, false, 0, 0, 3),
-                ToDimAlign(sd.right, fontSize, "DIM", false, true, 0, 0, 4),
-                ToDimAlign([...sd.right, ...sectionRightDimPoints], fontSize, "DIM", false, true, 0, 0, 3),
+                ToDimCont([sd.top[0], sd.top[sd.top.length - 1]], fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : 1, 2),
+                ToDimCont(sd.top, fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : sd.top.length - 1, 1),
+                ToDimCont([sd.bottom[0], sd.bottom[sd.bottom.length - 1]], fontSize, "DIM", true, false, 0, 0, 2),
+                ToDimCont(sd.bottom, fontSize, "DIM", true, false, 0, 0, 1),
+                ToDimCont(sd.left, fontSize, "DIM", false, false, 0, 0, 4),
+                ToDimCont([...sd.left, ...sectionLeftDimPoints], fontSize, "DIM", false, false, 0, 0, 3),
+                ToDimCont(sd.right, fontSize, "DIM", false, true, 0, 0, 4),
+                ToDimCont([...sd.right, ...sectionRightDimPoints], fontSize, "DIM", false, true, 0, 0, 3),
             ],
             topView: [
-                ToDimAlign([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
-                ToDimAlign(topLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
-                ToDimAlign([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
-                ToDimAlign(topRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
+                ToDimCont([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
+                ToDimCont(topLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
+                ToDimCont([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
+                ToDimCont(topRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
             ],
             bottomView: [
-                ToDimAlign([bottomLeftDimPoints[0], bottomLeftDimPoints[bottomLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
-                ToDimAlign(bottomLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
-                ToDimAlign([bottomRightDimPoints[0], bottomRightDimPoints[bottomRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
-                ToDimAlign(bottomRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
+                ToDimCont([bottomLeftDimPoints[0], bottomLeftDimPoints[bottomLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
+                ToDimCont(bottomLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
+                ToDimCont([bottomRightDimPoints[0], bottomRightDimPoints[bottomRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
+                ToDimCont(bottomRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
             ],
         },
     };
@@ -999,8 +1000,6 @@ function GenDiaphragm_BoxHole(sectionPoint, point, diaSection, gridkey, diaSecti
     };
 
     let refPoint = GetRefPoint(point);
-
-    // } //  임시 입력변수
     let urib = sectionPoint.input.Urib;
     let lrib = sectionPoint.input.Lrib;
     const bl = sectionPoint.web[0][0];
@@ -1607,26 +1606,26 @@ function GenDiaphragm_BoxHole(sectionPoint, point, diaSection, gridkey, diaSecti
         },
         dimension: {
             sectionView: [
-                ToDimAlign([sd.top[0], sd.top[sd.top.length - 1]], fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : 1, 2),
-                ToDimAlign(sd.top, fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : sd.top.length - 1, 1),
-                ToDimAlign([sd.bottom[0], sd.bottom[sd.bottom.length - 1]], fontSize, "DIM", true, false, 0, 0, 2),
-                ToDimAlign(sd.bottom, fontSize, "DIM", true, false, 0, 0, 1),
-                ToDimAlign(sd.left, fontSize, "DIM", false, false, 0, 0, 4),
-                ToDimAlign([...sd.left, ...sectionLeftDimPoints], fontSize, "DIM", false, false, 0, 0, 3),
-                ToDimAlign(sd.right, fontSize, "DIM", false, true, 0, 0, 4),
-                ToDimAlign([...sd.right, ...sectionRightDimPoints], fontSize, "DIM", false, true, 0, 0, 3),
+                ToDimCont([sd.top[0], sd.top[sd.top.length - 1]], fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : 1, 2),
+                ToDimCont(sd.top, fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : sd.top.length - 1, 1),
+                ToDimCont([sd.bottom[0], sd.bottom[sd.bottom.length - 1]], fontSize, "DIM", true, false, 0, 0, 2),
+                ToDimCont(sd.bottom, fontSize, "DIM", true, false, 0, 0, 1),
+                ToDimCont(sd.left, fontSize, "DIM", false, false, 0, 0, 4),
+                ToDimCont([...sd.left, ...sectionLeftDimPoints], fontSize, "DIM", false, false, 0, 0, 3),
+                ToDimCont(sd.right, fontSize, "DIM", false, true, 0, 0, 4),
+                ToDimCont([...sd.right, ...sectionRightDimPoints], fontSize, "DIM", false, true, 0, 0, 3),
             ],
             topView: [
-                ToDimAlign([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
-                ToDimAlign(topLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
-                ToDimAlign([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
-                ToDimAlign(topRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
+                ToDimCont([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
+                ToDimCont(topLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
+                ToDimCont([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
+                ToDimCont(topRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
             ],
             bottomView: [
-                ToDimAlign([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
-                ToDimAlign(topLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
-                ToDimAlign([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
-                ToDimAlign(topRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
+                ToDimCont([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
+                ToDimCont(topLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
+                ToDimCont([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
+                ToDimCont(topRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
             ],
         },
     };
@@ -2384,30 +2383,30 @@ function GenDiaphragm_BoxSupport(sectionPoint, point, diaSection, gridkey, diaSe
         },
         dimension: {
             sectionView: [
-                ToDimAlign([sd.top[0], sd.top[sd.top.length - 1]], fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : 1, 2),
-                ToDimAlign(sd.top, fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : sd.top.length - 1, 1),
-                ToDimAlign([sd.bottom[0], sd.bottom[sd.bottom.length - 1]], fontSize, "DIM", true, false, 0, 0, 2),
-                ToDimAlign(sd.bottom, fontSize, "DIM", true, false, 0, 0, 1),
-                ToDimAlign(sd.left, fontSize, "DIM", false, false, 0, 0, 4),
-                ToDimAlign([...sd.left, ...sectionLeftDimPoints], fontSize, "DIM", false, false, 0, 0, 3),
-                ToDimAlign(sd.right, fontSize, "DIM", false, true, 0, 0, 4),
-                ToDimAlign([...sd.right, ...sectionRightDimPoints], fontSize, "DIM", false, true, 0, 0, 3),
+                ToDimCont([sd.top[0], sd.top[sd.top.length - 1]], fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : 1, 2),
+                ToDimCont(sd.top, fontSize, "DIM", true, true, 0, sd.topIndex ? 0 : sd.top.length - 1, 1),
+                ToDimCont([sd.bottom[0], sd.bottom[sd.bottom.length - 1]], fontSize, "DIM", true, false, 0, 0, 2),
+                ToDimCont(sd.bottom, fontSize, "DIM", true, false, 0, 0, 1),
+                ToDimCont(sd.left, fontSize, "DIM", false, false, 0, 0, 4),
+                ToDimCont([...sd.left, ...sectionLeftDimPoints], fontSize, "DIM", false, false, 0, 0, 3),
+                ToDimCont(sd.right, fontSize, "DIM", false, true, 0, 0, 4),
+                ToDimCont([...sd.right, ...sectionRightDimPoints], fontSize, "DIM", false, true, 0, 0, 3),
             ],
             topView: [
-                ToDimAlign([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
-                ToDimAlign(topLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
-                ToDimAlign([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
-                ToDimAlign(topRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
-                ToDimAlign(topSupportDimPoints, fontSize, "DIM", false, true, 0, 0, 1),
-                ToDimAlign(topSupportDimPoints2, fontSize, "DIM", true, true, 0, 0, 0),
+                ToDimCont([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
+                ToDimCont(topLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
+                ToDimCont([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
+                ToDimCont(topRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
+                ToDimCont(topSupportDimPoints, fontSize, "DIM", false, true, 0, 0, 1),
+                ToDimCont(topSupportDimPoints2, fontSize, "DIM", true, true, 0, 0, 0),
             ],
             bottomView: [
-                ToDimAlign([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
-                ToDimAlign(topLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
-                ToDimAlign([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
-                ToDimAlign(topRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
-                ToDimAlign(bottomSupportDimPoints, fontSize, "DIM", false, true, 0, 0, 1),
-                ToDimAlign(topSupportDimPoints2, fontSize, "DIM", true, true, 0, 0, 0),
+                ToDimCont([topLeftDimPoints[0], topLeftDimPoints[topLeftDimPoints.length - 1]], fontSize, "DIM", false, false, 0, 0, 4),
+                ToDimCont(topLeftDimPoints, fontSize, "DIM", false, false, 0, 0, 3),
+                ToDimCont([topRightDimPoints[0], topRightDimPoints[topRightDimPoints.length - 1]], fontSize, "DIM", false, true, 0, 0, 4),
+                ToDimCont(topRightDimPoints, fontSize, "DIM", false, true, 0, 0, 3),
+                ToDimCont(bottomSupportDimPoints, fontSize, "DIM", false, true, 0, 0, 1),
+                ToDimCont(topSupportDimPoints2, fontSize, "DIM", true, true, 0, 0, 0),
             ],
         },
     };

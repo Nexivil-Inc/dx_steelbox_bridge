@@ -1,4 +1,4 @@
-import { THREE, BufferGeometryUtils } from "global";
+import { THREE } from "global";
 import { GenFlangeQuantity, GenRibQuantity, GenWebQuantity } from "./quantity";
 import {
     GetFilletPoints,
@@ -7,13 +7,14 @@ import {
     GetRefPoint,
     Hatch,
     Line,
-    Loft,
     PointToGlobal,
     TwoLineIntersect,
-    TwoPointsLength,
+    RadToDegree,
+    Loft,
 } from "@nexivil/package-modules";
 import { GetWeldingPoint } from "./utils";
 import { GenSteelBoxGeometry } from "./geometry";
+import { DegreeToRad } from "@nexivil/package-modules/src/module/basic";
 
 export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance) {
     let bottomConcDict = {};
@@ -30,8 +31,6 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
 
     let keyname = "";
     let splicer = [];
-    let checkList1 = [[], []];
-    let checkList2 = [[], []];
     for (let i in girderStationList) {
         let segNum = 1;
         let segName = "G" + (i * 1 + 1).toFixed(0) + "SEG" + segNum.toString();
@@ -59,8 +58,10 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
 
             let point1 = girderStationList[i][j].point;
             let point2 = girderStationList[i][j + 1].point;
-            let refPt1 = GetRefPoint(point1);
-            let refPt2 = GetRefPoint(point2);
+            // if (i === "0") console.log(180 + RadToDegree(point1.zRotation));
+            // console.log(point1)
+            // let point1 = GetRefPoint(point1);
+            // let point2 = GetRefPoint(point2);
             pk1 = girderStationList[i][j].key;
             pk2 = girderStationList[i][j + 1].key;
 
@@ -78,6 +79,7 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
             let uflangeSide = GenFlangeSidePoints(sectionPointDict, pk1, pk2, point1, point2, "uflangeSide", splicer, endCutFilletR);
             uflangeSide.forEach((el, i) => topSidePoints[i].push(...el));
             splicer.forEach(function (sp) {
+                // if (pk2.substr(2, 2) === sp && j < 124) {
                 if (pk2.substr(2, 2) === sp) {
                     let topView = GenFlangePlanDraw(uflangeShapeList);
 
@@ -96,16 +98,16 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
                             yOffset,
                         });
                     }
-                    //
+
                     let uflangeMeta = {
                         part: segName,
-                        key: keyname,
+                        key: "Flange-upper",
                         girder: i * 1 + 1,
                         seg: segNum,
                     };
                     result["children"].push({
                         type: "steelbox",
-                        meta: { ...uflangeMeta, material: "Steel", name: "SteelBox" },
+                        meta: { ...uflangeMeta, material: "Steel" },
                         properties: {
                             thickness: sectionPointDict[pk1].forward.input.tuf,
                             qnttData,
@@ -157,10 +159,10 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
                             yOffset,
                         });
                     }
-                    let lflangeMeta = { part: segName, key: keyname, girder: i * 1 + 1, seg: segNum };
+                    let lflangeMeta = { part: segName, key: "Flange-lower", girder: i * 1 + 1, seg: segNum };
                     result["children"].push({
                         type: "steelbox",
-                        meta: { ...lflangeMeta, material: "Steel", name: "SteelBox" },
+                        meta: { ...lflangeMeta, material: "Steel" },
                         properties: {
                             thickness: sectionPointDict[pk1].forward.input.tlf,
                             qnttData,
@@ -186,7 +188,7 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
                 }
             });
 
-            /* XXX 모델 생성 */
+            /* Web 모델 생성 */
             splicer = ["WF", "SP", "K6"];
             let webSide = GenWebSidePoints(sectionPointDict, pk1, pk2, point1, point2, "webSide", splicer, endCutFilletR, entrance);
             let leftWebShape = GenWebShape(sectionPointDict, pk1, pk2, point1, point2, 0, splicer, endCutFilletR, entrance);
@@ -201,13 +203,15 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
                 if (pk2.substr(2, 2) === sp) {
                     let leftWebMeta = {
                         part: segName,
-                        key: "G" + (i * 1 + 1).toString() + "LeftWeB" + Wi,
+                        // key: "G" + (i * 1 + 1).toString() + "LeftWeB" + Wi,
+                        key: "Web-left",
                         girder: i * 1 + 1,
                         seg: segNum,
                     };
                     let rightWebMeta = {
                         part: segName,
-                        key: "G" + (i * 1 + 1).toString() + "RightWeB" + Wi,
+                        // key: "G" + (i * 1 + 1).toString() + "RightWeB" + Wi,
+                        key: "Web-right",
                         girder: i * 1 + 1,
                         seg: segNum,
                     };
@@ -231,7 +235,7 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
 
                     result["children"].push({
                         type: "steelbox",
-                        meta: { ...leftWebMeta, material: "Steel", name: "SteelBox" },
+                        meta: { ...leftWebMeta, material: "Steel" },
                         properties: {
                             thickness: sectionPointDict[pk1].forward.input.tw,
                             qnttData: leftWebQtt,
@@ -276,7 +280,7 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
 
                     result["children"].push({
                         type: "steelbox",
-                        meta: { ...rightWebMeta, material: "Steel", name: "SteelBox" },
+                        meta: { ...rightWebMeta, material: "Steel" },
                         properties: {
                             thickness: sectionPointDict[pk1].forward.input.tw,
                             qnttData: leftWebQtt,
@@ -341,11 +345,11 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
                 }
                 if (L1.length > 0) {
                     for (let k in L1) {
-                        L1[k].forEach(element => bottomRibPoints[k].push(PointToGlobal(element, refPt1)));
+                        L1[k].forEach(element => bottomRibPoints[k].push(PointToGlobal(element, point1)));
                     }
                     if ((L2.length > 0 && L3.length !== L2.length) || pk2.substr(2, 2) === "SP" || pk2.substr(2, 2) === "K6") {
                         for (let k in L2) {
-                            L2[k].forEach(element => bottomRibPoints[k].push(PointToGlobal(element, refPt2)));
+                            L2[k].forEach(element => bottomRibPoints[k].push(PointToGlobal(element, point2)));
                         }
 
                         let ribWeldingLine = GenRibWeldingLineDict(bottomRibPoints);
@@ -368,7 +372,8 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
 
                         let bottomRibMeta = {
                             part: segName,
-                            key: "G" + (i * 1 + 1).toString() + "lRib" + lRibi,
+                            // key: "G" + (i * 1 + 1).toString() + "lRib" + lRibi,
+                            key: "Rib-lower",
                             girder: i * 1 + 1,
                             seg: segNum,
                         };
@@ -387,7 +392,7 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
 
                         result["children"].push({
                             type: "steelbox",
-                            meta: { ...bottomRibMeta, material: "Steel", name: "SteelBox" },
+                            meta: { ...bottomRibMeta, material: "Steel" },
                             properties: {
                                 thickness: sectionPointDict[pk1].forward.input.Lrib.thickness,
                                 qnttData: bottomRibQtt,
@@ -419,11 +424,11 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
                 }
                 if (L1.length > 0) {
                     for (let k in L1) {
-                        L1[k].forEach(element => topRibPoints[k].push(PointToGlobal(element, refPt1)));
+                        L1[k].forEach(element => topRibPoints[k].push(PointToGlobal(element, point1)));
                     }
                     if ((L2.length > 0 && L3.length !== L2.length) || pk2.substr(2, 2) === "SP" || pk2.substr(2, 2) === "K6") {
                         for (let k in L2) {
-                            L2[k].forEach(element => topRibPoints[k].push(PointToGlobal(element, refPt2)));
+                            L2[k].forEach(element => topRibPoints[k].push(PointToGlobal(element, point2)));
                         }
 
                         let ribWeldingLine = GenRibWeldingLineDict(topRibPoints);
@@ -446,7 +451,8 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
 
                         let topRibMeta = {
                             part: segName,
-                            key: keyname,
+                            // key: keyname,
+                            key: "Rib-upper",
                             girder: i * 1 + 1,
                             seg: segNum,
                         };
@@ -465,7 +471,7 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
 
                         result["children"].push({
                             type: "steelbox",
-                            meta: { ...topRibMeta, material: "Steel", name: "SteelBox" },
+                            meta: { ...topRibMeta, material: "Steel" },
                             properties: {
                                 thickness: sectionPointDict[pk1].forward.input.Urib.thickness,
                                 qnttData: topRibQtt,
@@ -505,7 +511,7 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
             }
             if (L1.length > 0) {
                 let L1Global = [];
-                L1.forEach(element => L1Global.push(PointToGlobal(element, refPt1)));
+                L1.forEach(element => L1Global.push(PointToGlobal(element, point1)));
                 bottomConcPoints.push(L1Global);
                 bottomConcGridPoints.push({ key: pk1, point: point1 });
                 let L1GlobalSide = [];
@@ -518,7 +524,7 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
             }
             if (L1.length > 0 && L2.length > 0 && L3.length === 0) {
                 let L2Global = [];
-                L2.forEach(element => L2Global.push(PointToGlobal(element, refPt2)));
+                L2.forEach(element => L2Global.push(PointToGlobal(element, point2)));
                 bottomConcPoints.push(L2Global);
                 bottomConcGridPoints.push({ key: pk2, point: point2 });
                 let L2GlobalSide = [];
@@ -531,11 +537,12 @@ export function GenSteelBoxModelFn(girderStationList, sectionPointDict, entrance
 
                 let bottomConcMeta = {
                     part: segName,
-                    key: keyname,
+                    // key: keyname,
+                    key: "Concrete",
                     girder: i * 1 + 1,
                     seg: segNum,
                 };
-                let bottomConc = new Loft(bottomConcPoints, true, "Concrete", { ...bottomConcMeta, name: "SteelBox" });
+                let bottomConc = new Loft(bottomConcPoints, true, "Concrete", { ...bottomConcMeta });
                 bottomConc.gridPoints = bottomConcGridPoints;
                 bottomConc.model = {
                     bottomView: GenConcPlanDraw(bottomConcPoints, 0, 3, "GRAY2", bottomConcMeta),
@@ -759,10 +766,10 @@ function GenFlangeShape(sectionPointDict, pk1, pk2, point1, point2, plateKey, sp
     let former2 = uf2[0][0] ? uf2[0][0].x : uf2[2][0].x; //point2.backward
     let latter2 = uf3[0][0] ? uf3[0][0].x : uf3[2][0].x; //point2.forward
 
-    let refPt1 = GetRefPoint(point1);
-    let refPt2 = GetRefPoint(point2);
-    let line1 = uf1[0][0] ? PointToGlobal([uf1[0][0], uf1[1][0]], refPt1) : PointToGlobal([uf1[2][0], uf1[2][1]], refPt1);
-    let line2 = uf2[0][0] ? PointToGlobal([uf2[0][0], uf2[1][0]], refPt2) : PointToGlobal([uf2[2][0], uf2[2][1]], refPt2);
+    // let point1 = GetRefPoint(point1);
+    // let point2 = GetRefPoint(point2);
+    let line1 = uf1[0][0] ? PointToGlobal([uf1[0][0], uf1[1][0]], point1) : PointToGlobal([uf1[2][0], uf1[2][1]], point1);
+    let line2 = uf2[0][0] ? PointToGlobal([uf2[0][0], uf2[1][0]], point2) : PointToGlobal([uf2[2][0], uf2[2][1]], point2);
 
     let isCross = Boolean(TwoLineIntersect(line1, line2)) && !pk1.includes("K");
 
@@ -773,15 +780,10 @@ function GenFlangeShape(sectionPointDict, pk1, pk2, point1, point2, plateKey, sp
     let former0 = uf0[0][0] ? uf0[0][0].y : uf0[2][0].y;
     let latter0 = uf1[0][0] ? uf1[0][0].y : uf1[2][0].y;
 
-    uf0.forEach((pts, idx) => plate0[idx].push(...PointToGlobal(pts, refPt1)));
-    uf1.forEach((pts, idx) => plate1[idx].push(...PointToGlobal(pts, refPt1)));
-    uf2.forEach((pts, idx) => plate2[idx].push(...PointToGlobal(pts, refPt2)));
-    uf3.forEach((pts, idx) => plate3[idx].push(...PointToGlobal(pts, refPt2)));
-
-    let plate0_ = [[], [], []];
-    let plate1_ = [[], [], []];
-    uf0.forEach((pts, idx) => plate0_[idx].push(...PointToGlobal(pts, { ...refPt1, y: 0, z: 0 })));
-    uf1.forEach((pts, idx) => plate1_[idx].push(...PointToGlobal(pts, { ...refPt1, y: 0, z: 0 })));
+    uf0.forEach((pts, idx) => plate0[idx].push(...PointToGlobal(pts, point1)));
+    uf1.forEach((pts, idx) => plate1[idx].push(...PointToGlobal(pts, point1)));
+    uf2.forEach((pts, idx) => plate2[idx].push(...PointToGlobal(pts, point2)));
+    uf3.forEach((pts, idx) => plate3[idx].push(...PointToGlobal(pts, point2)));
 
     if (point2.mainStation > point1.mainStation) {
         // outborder
@@ -791,7 +793,6 @@ function GenFlangeShape(sectionPointDict, pk1, pk2, point1, point2, plateKey, sp
                 if (uf1[2][0]) {
                     //폐합에서 폐합인 경우
                     try {
-                        console.log("herer")
                         plate1[2][0] = GetPointBasedLength([plate1[2][0], plate2[2][0]], (latter1 - former1) * 2); //숫자 2는 확폭시 경사도
                         plate1[2][1] = GetPointBasedLength([plate1[2][1], plate2[2][1]], (latter1 - former1) * 2);
                         plate1[2][2] = GetPointBasedLength([plate1[2][2], plate2[2][2]], (latter1 - former1) * 2);
@@ -1546,7 +1547,6 @@ function GenRibWeldingLineDict(points) {
 
 function GenFlangeFilletShapes(plate1, plate2, isForward, radius, smoothness) {
     let filletPoint = [[], [], [], []];
-
     let plt1 = isForward ? plate1 : plate2;
     let plt2 = isForward ? plate2 : plate1;
     let result = [[], []];

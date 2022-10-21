@@ -9,8 +9,8 @@ import {
     PointToDraw,
     RotateTransModels,
     Text,
-    ToDimAlign,
 } from "@nexivil/package-modules";
+import { ToDimCont } from "@nexivil/package-modules/src/temp";
 
 export function GenPartPlanDraw(part, isTop) {
     let result = [];
@@ -134,16 +134,16 @@ export function GenWeldingDetailDraw(weldingInput, fontSize, mark, xOffset, yOff
         result.push(new Line(rightPlate, "CYAN", false, null));
 
         if (weldingInput.thickness2 > weldingInput.thickness1) {
-            result.push(ToDimAlign([leftPlate[0], leftPlate[4]], fontSize, "DIM", false, false, 0, 0, 0));
-            result.push(ToDimAlign([rightPlate[0], rightPlate[3], rightPlate[4]], fontSize, "DIM", false, true, 0, 0, 0));
-            result.push(ToDimAlign([rightPlate[0], rightPlate[4]], fontSize, "DIM", false, true, 0, 0, 1));
+            result.push(ToDimCont([leftPlate[0], leftPlate[4]], fontSize, "DIM", false, false, 0, 0, 0));
+            result.push(ToDimCont([rightPlate[0], rightPlate[3], rightPlate[4]], fontSize, "DIM", false, true, 0, 0, 0));
+            result.push(ToDimCont([rightPlate[0], rightPlate[4]], fontSize, "DIM", false, true, 0, 0, 1));
         } else {
-            result.push(ToDimAlign([leftPlate[0], leftPlate[4]], fontSize, "DIM", false, false, 0, 0, 1));
-            result.push(ToDimAlign([leftPlate[0], leftPlate[3], leftPlate[4]], fontSize, "DIM", false, false, 0, 0, 0));
-            result.push(ToDimAlign([rightPlate[0], rightPlate[4]], fontSize, "DIM", false, true, 0, 0, 0));
+            result.push(ToDimCont([leftPlate[0], leftPlate[4]], fontSize, "DIM", false, false, 0, 0, 1));
+            result.push(ToDimCont([leftPlate[0], leftPlate[3], leftPlate[4]], fontSize, "DIM", false, false, 0, 0, 0));
+            result.push(ToDimCont([rightPlate[0], rightPlate[4]], fontSize, "DIM", false, true, 0, 0, 0));
         }
-        result.push(ToDimAlign([leftPlate[3], rightPlate[3]], fontSize, "DIM", true, true, 0, 1, 0));
-        result.push(ToDimAlign([leftPlate[1], rightPlate[1]], fontSize, "DIM", true, false, 0, 0, 0));
+        result.push(ToDimCont([leftPlate[3], rightPlate[3]], fontSize, "DIM", true, true, 0, 1, 0));
+        result.push(ToDimCont([leftPlate[1], rightPlate[1]], fontSize, "DIM", true, false, 0, 0, 0));
 
         let anchor = {};
         let rot = 0;
@@ -259,18 +259,18 @@ export function GenWeldingDetailDraw(weldingInput, fontSize, mark, xOffset, yOff
         result.push(new Line(leftPlate, "CYAN", false, null));
         result.push(new Line(rightPlate, "CYAN", false, null));
         if (weldingInput.thickness2 > weldingInput.thickness1) {
-            result.push(ToDimAlign([leftPlate[0], leftPlate[5]], fontSize, "DIM", false, false, 0, 0, 0));
+            result.push(ToDimCont([leftPlate[0], leftPlate[5]], fontSize, "DIM", false, false, 0, 0, 0));
             result.push(
-                ToDimAlign([rightPlate[0], rightPlate[2], rightPlate[3], rightPlate[4], rightPlate[5]], fontSize, "DIM", false, true, 0, 0, 0)
+                ToDimCont([rightPlate[0], rightPlate[2], rightPlate[3], rightPlate[4], rightPlate[5]], fontSize, "DIM", false, true, 0, 0, 0)
             );
-            result.push(ToDimAlign([rightPlate[0], rightPlate[5]], fontSize, "DIM", false, true, 0, 0, 1));
+            result.push(ToDimCont([rightPlate[0], rightPlate[5]], fontSize, "DIM", false, true, 0, 0, 1));
         } else {
-            result.push(ToDimAlign([leftPlate[0], leftPlate[5]], fontSize, "DIM", false, false, 0, 0, 1));
-            result.push(ToDimAlign([leftPlate[0], leftPlate[2], leftPlate[3], leftPlate[4], leftPlate[5]], fontSize, "DIM", false, false, 0, 0, 0));
-            result.push(ToDimAlign([rightPlate[0], rightPlate[5]], fontSize, "DIM", false, true, 0, 0, 0));
+            result.push(ToDimCont([leftPlate[0], leftPlate[5]], fontSize, "DIM", false, false, 0, 0, 1));
+            result.push(ToDimCont([leftPlate[0], leftPlate[2], leftPlate[3], leftPlate[4], leftPlate[5]], fontSize, "DIM", false, false, 0, 0, 0));
+            result.push(ToDimCont([rightPlate[0], rightPlate[5]], fontSize, "DIM", false, true, 0, 0, 0));
         }
-        result.push(ToDimAlign([leftPlate[4], rightPlate[4]], fontSize, "DIM", true, true, 0, 1, 0));
-        result.push(ToDimAlign([leftPlate[1], leftPlate[2], rightPlate[2], rightPlate[1]], fontSize, "DIM", true, false, 0, 0, 0));
+        result.push(ToDimCont([leftPlate[4], rightPlate[4]], fontSize, "DIM", true, true, 0, 1, 0));
+        result.push(ToDimCont([leftPlate[1], leftPlate[2], rightPlate[2], rightPlate[1]], fontSize, "DIM", true, false, 0, 0, 0));
 
         let anchor = {};
         let rot = 0;
@@ -355,6 +355,7 @@ export function DrawGirderMiniMap(girderStation, steelBoxDict, girderIndex1, gir
     let meta = {}; // TODO: input으로 받거나 일괄성 확인 후 작성 필요
     let rot = -1 * Math.atan2(l2[1].y - l2[0].y, l2[1].x - l2[0].x);
     let initPoint = l2[0];
+    console.log(GetGirderBoundaryPoints(steelBoxDict["children"], girderIndex1, girderIndex2, boundary));
     top.push(new Hatch(GetGirderBoundaryPoints(steelBoxDict["children"], girderIndex1, girderIndex2, boundary), "RED2", meta));
     let initTemp = top.map(draw => RotateTransModels(draw, initPoint, 0, 0, rot, scale));
     let { xMin, xMax, yMin, yMax } = GetBoundaryForDrawings(initTemp, fontSize * 4, fontSize * 4, fontSize * 8, fontSize * 5);

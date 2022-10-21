@@ -5,7 +5,10 @@ import { FittingGridInputFn, GenGridAutoDataFn, GenGridInfoFn } from "./grid";
 import { GenBasicSectionsFn, GenDefaultETCPartDataFn, GenSectionPointDictFn } from "./section";
 import { GenSpliceModelFn } from "./splice";
 import { GenSteelBoxModelFn } from "./steelBox";
-import { GenVStiffModelFn } from "./verticalStiffner";
+import { GenStudModelFn } from "./stud";
+import { GenHStiffModelFn, GenVStiffModelFn } from "./stiffner";
+import { GenJackupModelFn } from "./jackup";
+import { GenSupportModelFn } from "./support";
 
 export function GenBasicSections() {
     this.addInput("girderLayout", "");
@@ -238,7 +241,7 @@ export function GenBarrierModel() {
 
 GenBarrierModel.title = "GenBarrierModel";
 GenBarrierModel.prototype.onExecute = function () {
-    let newResult = GenBarrierModelFn(
+    let result = GenBarrierModelFn(
         this.getInputData(0),
         this.getInputData(1),
         this.getInputData(2),
@@ -247,6 +250,61 @@ GenBarrierModel.prototype.onExecute = function () {
         this.getInputData(5),
         this.getInputData(6)
     );
-    this.setOutputData(0, newResult.barrierModel);
-    this.setOutputData(1, newResult.pavementModel);
+    this.setOutputData(0, result.barrierModel);
+    this.setOutputData(1, result.pavementModel);
+};
+
+export function GenStudModel() {
+    this.addInput("girderStations", "");
+    this.addInput("sectionPointDict", "");
+    this.addInput("topStudInfo", "");
+    this.addInput("bottomStudInfo", "");
+    this.addOutput("model", "");
+}
+
+GenStudModel.title = "GenStudModel";
+GenStudModel.prototype.onExecute = function () {
+    let result = GenStudModelFn(this.getInputData(0), this.getInputData(1), this.getInputData(2), this.getInputData(3));
+    this.setOutputData(0, result.model);
+};
+
+export function GenHStiffModel() {
+    this.addInput("gridPointDict", "");
+    this.addInput("sectionPointDict", "");
+    this.addInput("hStiffLayout", "");
+    this.addInput("isStiff", "");
+    this.addOutput("model", "");
+}
+
+GenHStiffModel.title = "GenHStiffModel";
+GenHStiffModel.prototype.onExecute = function () {
+    let result = GenHStiffModelFn(this.getInputData(0), this.getInputData(1), this.getInputData(2), this.getInputData(3));
+    this.setOutputData(0, result.model);
+};
+
+export function GenJackupModel() {
+    this.addInput("gridPointDict", "");
+    this.addInput("sectionPointDict", "");
+    this.addInput("jackupLayout", "");
+    this.addOutput("model", "");
+}
+
+GenJackupModel.title = "GenJackupModel";
+GenJackupModel.prototype.onExecute = function () {
+    let result = GenJackupModelFn(this.getInputData(0), this.getInputData(1), this.getInputData(2));
+    this.setOutputData(0, result.model);
+};
+
+export function GenSupportModel() {
+    this.addInput("gridPointDict", "");
+    this.addInput("sectionPointDict", "");
+    this.addInput("supportLayout", "");
+    this.addInput("isFixed", "");
+    this.addOutput("model", "");
+}
+
+GenSupportModel.title = "GenSupportModel";
+GenSupportModel.prototype.onExecute = function () {
+    let result = GenSupportModelFn(this.getInputData(0), this.getInputData(1), this.getInputData(2), this.getInputData(3));
+    this.setOutputData(0, result.model);
 };

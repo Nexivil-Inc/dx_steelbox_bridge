@@ -1,5 +1,4 @@
 import {
-    ToDimAlign,
     IntersectionPointOnSpline,
     Layout2D,
     Line,
@@ -8,7 +7,9 @@ import {
     Plot2D,
     GetPointsWithBulge,
     TwoPointsLength,
+    RadToDegree,
 } from "@nexivil/package-modules";
+import { ToDimCont } from "@nexivil/package-modules/src/temp";
 import { _ } from "global";
 import { GenDefaultGridPointDict } from "./grid";
 import { GetPointSectionInfo } from "./utils";
@@ -492,7 +493,8 @@ function GenSupportSectionDrawing(deckPointDicts, sectionPoints, properties) {
                                 webDim.push(pts[1]);
                                 heightDim = [pts[0], pts[1]];
                                 section["dim"].push(
-                                    ToDimAlign(heightDim, fontSize, layer, false, false, 0, 0, 1, {
+                                    // ToDimCont(heightDim, layer, false, false, 0, 0, 1, {
+                                    ToDimCont(heightDim, 2, Math.PI / 2, false, [], false, {
                                         name: "Support",
                                         part: "dimension",
                                     })
@@ -512,19 +514,22 @@ function GenSupportSectionDrawing(deckPointDicts, sectionPoints, properties) {
         section["draw"].push(new Line(deckPt, "GREEN", true, null, { name: "Support", part: "deck" }));
 
         section["dim"].push(
-            ToDimAlign([deckPt[1], ...webDim, deckPt[3]], 0, "DIM", true, true, 0, dimIndex ? 0 : webDim.length + 1, 1, {
+            // ToDimCont([deckPt[1], ...webDim, deckPt[3]], 0, "DIM", true, true, 0, dimIndex ? 0 : webDim.length + 1, 1, {
+            ToDimCont([deckPt[1], ...webDim, deckPt[3]], 1, 0, false, [], false, {
                 name: "Support",
                 part: "dimension",
             }),
-            ToDimAlign([deckPt[1], deckPt[2], deckPt[3]], 0, "DIM", true, true, 0, dimIndex ? 0 : 2, 2, {
+            // ToDimCont([deckPt[1], deckPt[2], deckPt[3]], 0, "DIM", true, true, 0, dimIndex ? 0 : 2, 2, {
+            ToDimCont([deckPt[1], deckPt[2], deckPt[3]], 2, 0, false, [], false, {
                 name: "Support",
                 part: "dimension",
             }),
-            ToDimAlign([deckPt[1], deckPt[3]], 0, "DIM", true, true, 0, dimIndex ? 0 : 1, 3, {
+            // ToDimCont([deckPt[1], deckPt[3]], 0, "DIM", true, true, 0, dimIndex ? 0 : 1, 3, {
+            ToDimCont([deckPt[1], deckPt[3]], 3, 0, false, [], false, {
                 name: "Support",
                 part: "dimension",
             }),
-            ToDimAlign([deckPt[0], deckPt[1]], 0, "DIM", false, true, 0, 0, 1, {
+            ToDimCont([deckPt[0], deckPt[1]], 1, Math.PI / 2, false, [], false, {
                 name: "Support",
                 part: "dimension",
             })
@@ -589,17 +594,20 @@ function GenEndSideDrawing(seShape, endSection, properties) {
             })
         );
 
-        let isTop = k === 0 ? true : false;
+        let rot = k === 0 ? -1 : 1;
         side["dim"].push(
-            ToDimAlign([sAbut[1], sDeck[5], sDeck[6], sDeck[7], sDeck[8]], 0, "DIM", true, true, 0, 1, 1, {
+            // ToDimCont([sAbut[1], sDeck[5], sDeck[6], sDeck[7], sDeck[8]], 0, "DIM", true, true, 0, 1, 1, {
+            ToDimCont([sAbut[1], sDeck[5], sDeck[6], sDeck[7], sDeck[8]], 1, 0, false, [], false, {
                 name: "End-Side",
                 part: "dimension",
             }),
-            ToDimAlign([sDeck[7], sDeck[2], sWeb[3]], 0, "DIM", false, isTop, 0, 0, 1, {
+            // ToDimCont([sDeck[7], sDeck[2], sWeb[3]], 0, "DIM", false, isTop, 0, 0, 1, {
+            ToDimCont([sDeck[7], sDeck[2], sWeb[3]], 1, (rot * Math.PI) / 2, false, [], false, {
                 name: "End-Side",
                 part: "dimension",
             }),
-            ToDimAlign([sDeck[8], sDeck[1], sWeb[3]], 0, "DIM", false, isTop, 0, 1, 1, {
+            // ToDimCont([sDeck[8], sDeck[1], sWeb[3]], 0, "DIM", false, isTop, 0, 1, 1, {
+            ToDimCont([sDeck[8], sDeck[1], sWeb[3]], 1, (rot * Math.PI) / 2, false, [], false, {
                 name: "End-Side",
                 part: "dimension",
             })
@@ -963,6 +971,7 @@ function GenDefaultFlange(girderLayout, endSection, supportSection, common, auto
     }
     return { ufwLayout, lfwLayout, uRib, lRib };
 }
+
 // function GenDefaultFlange(girderLayout, endSection, supportSection, common, auto) {
 //     let girderNum = girderLayout.girderCount;
 //     let supportNum = girderLayout.supportCount;
@@ -1306,8 +1315,8 @@ function GenDefaultStiffPoint(girderLayout, end, support, auto, SEShape) {
             let ptName2 = "G" + (i + 1).toFixed(0) + "S" + (j + 1).toFixed(0);
             let point1 = gridPointDict[ptName1];
             let point2 = gridPointDict[ptName2];
-            skew1 = point1.skew;
-            skew2 = point2.skew;
+            skew1 = point1.skew + Math.PI / 2;
+            skew2 = point2.skew + Math.PI / 2;
             let sLength = point2.mainStation - point1.mainStation;
             let diaNum = Math.floor(sLength / diaSpacing);
             let remain = sLength % diaSpacing;
@@ -1393,9 +1402,9 @@ function GenDefaultStiffPoint(girderLayout, end, support, auto, SEShape) {
             spNum = spList.length - sIndex - eIndex;
             if (j === 1) {
                 for (let d = 0; d < diaList.length; d++) {
-                    if (d === 0 || d === diaList.length - 1) {
-                        let skew = ((d === 0 ? skew1 : skew2) * 180) / Math.PI;
-                        diaSub.push([benchMarkName, diaList[d], "박스부-지점", skew]);
+                    if (d === 0) {
+                        // let skew = RadToDegree(d === 0 ? skew1 : skew2).toFixed(3) * 1;
+                        diaSub.push([benchMarkName, diaList[d], "박스부-지점", RadToDegree(skew1)]);
                     } else {
                         diaSub.push([benchMarkName, diaList[d], "박스부-중앙홀", 90]);
                     }
@@ -1585,7 +1594,7 @@ function GenDefaultStiffPoint(girderLayout, end, support, auto, SEShape) {
             }
         }
 
-        diaSub.push(["G" + (i + 1).toFixed(0) + "S" + (supportNum - 2).toFixed(0), 0, "박스부-지점", (skew2 * 180) / Math.PI]);
+        diaSub.push(["G" + (i + 1).toFixed(0) + "S" + (supportNum - 2).toFixed(0), 0, "박스부-지점", RadToDegree(skew2)]);
         // if (end.Box) {
         //     diaSub.push(["G" + (i + 1).toFixed(0) + "S" + (supportNum - 2).toFixed(0), 0, "박스부-지점", skew2]);
         // } else {
@@ -1597,7 +1606,6 @@ function GenDefaultStiffPoint(girderLayout, end, support, auto, SEShape) {
         SpliceLayout.push(spliceSub);
         lConcLayout.push(lConcSub);
     }
-
     let diaToXbeam = {
         "플레이트-하": "플레이트-하",
         "플레이트-중": "플레이트-중",

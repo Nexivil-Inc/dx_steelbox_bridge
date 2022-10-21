@@ -669,6 +669,7 @@ export function GenDeckModelFn(
                 let girderPoint = IntersectionPointOnSpline(girderLine, mainPoint, alignment);
                 let girderPoint2 = IntersectionPointOnSpline(girderLine2, mainPoint, alignment);
                 let checkBool = false;
+                // let newSkew = Math.PI / 2;
                 let newSkew = Math.PI / 2;
                 let newSec = 1;
                 let newSec2 = 1;
@@ -773,20 +774,21 @@ export function GenDeckModelFn(
             dummyStation = station;
         }
         lowerLofts.push(slabLowerPoints);
+
         // TODO: 선형데이터에 곡선정보 추가 시 슬래브 lower, upper, leftCantil, rightCantil의 첫번째 포인트가 거의 원점에 가까운 포인트가 생성되어
         // TODO: 3d 모델의 형상이 이상해짐. 확인 후 수정 필요
-        for (let shape of slabLowerPoints) {
-            let isErr = false;
-            for (let pt of shape) {
-                if (Math.abs(pt.x) < 1e3 && Math.abs(pt.y) < 1e3) {
-                    isErr = true;
-                    break;
-                }
-            }
-            if (!isErr) {
-                deckShapesDict.lower.push(shape);
-            }
-        }
+        // for (let shape of slabLowerPoints) {
+        //     let isErr = false;
+        //     for (let pt of shape) {
+        //         if (Math.abs(pt.x) < 1e3 && Math.abs(pt.y) < 1e3) {
+        //             isErr = true;
+        //             break;
+        //         }
+        //     }
+        //     if (!isErr) {
+        //         deckShapesDict.lower.push(shape);
+        //     }
+        // }
         deckPointDict["children"].push(
             new Loft(deckShapesDict.lower, false, "Concrete", { key: "slab" + String(j + 1) + "-" + String(j + 2), part: "concrete" })
         );
@@ -796,7 +798,7 @@ export function GenDeckModelFn(
     // let bottomView = [];
     // for (let loft of lowerLofts) {
     //     let hLine = [];
-    //     let vLine = [];
+    //     let vLine = [];\
     //     loft[0].forEach(el => hLine.push([]));
     //     for (let i in loft) {
     //         loft[i].forEach((value, index) => hLine[index].push(value));

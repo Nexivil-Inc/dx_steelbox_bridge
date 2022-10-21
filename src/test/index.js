@@ -12,7 +12,6 @@ compareTest.prototype.onExecute = function () {
     const b = this.getInputData(1);
 
     let out = compareTestFn(a, b);
-
     this.setOutputData(0, out);
 };
 

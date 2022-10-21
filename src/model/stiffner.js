@@ -1,8 +1,18 @@
-import { GetRefPoint, PointToGlobal, ToDimAlign } from "@nexivil/package-modules";
+import { GetRefPoint, PointToGlobal, p } from "@nexivil/package-modules";
+import { ToDimCont } from "@nexivil/package-modules/src/temp";
 import { plateSectionRef } from "../reference/plate";
-import { GenHPlate, GenVPlate, GetPlateRestPoint, GetSectionDimensionDict, GetWeldingPoint, scallop, SectionPointToSectionView } from "./utils";
+import {
+    GenHPlate,
+    GenHPlate_rev,
+    GenVPlate,
+    GetPlateRestPoint,
+    GetSectionDimensionDict,
+    GetWeldingPoint,
+    scallop,
+    SectionPointToSectionView,
+} from "./utils";
 
-export function GenVStiffModelFn(gridPoint, sectionPointDict, vStiffLayout, vStiffSectionList) {
+export function GenVStiffModelFn(gridPointDict, sectionPointDict, vStiffLayout, vStiffSectionList) {
     const section = 2;
     let model = { parent: [], children: [] };
 
@@ -14,9 +24,43 @@ export function GenVStiffModelFn(gridPoint, sectionPointDict, vStiffLayout, vSti
             let sectionPoint = sectionPointDict[gridkey].forward;
             if (vStiffFnMap[vSectionName]) {
                 // if (vStiffFnMap[vSectionName] && ["박스부-수직보강"].includes(vSectionName)) {
-                let dia = vStiffFnMap[vSectionName](sectionPoint, gridPoint[gridkey], vSection, gridkey, vSectionName, plateSectionRef);
-                model["children"].push(...dia.children);
-                model["parent"].push(...dia.parent);
+                let vstiff = vStiffFnMap[vSectionName](sectionPoint, gridPointDict[gridkey], vSection, gridkey, vSectionName, plateSectionRef);
+                model["children"].push(...vstiff.children);
+                model["parent"].push(...vstiff.parent);
+            }
+        }
+    }
+    return { model };
+}
+
+export function GenHStiffModelFn(gridPointDict, sectionPointDict, hStiffLayout, isStiff = true) {
+    let model = { parent: [], children: [] };
+    const from = 0;
+    const to = 1;
+    if (isStiff) {
+        for (let i = 0; i < hStiffLayout.length; i++) {
+            if (hStiffLayout[i][from] && hStiffLayout[i][to]) {
+                let pk1 = hStiffLayout[i][from];
+                let pk2 = hStiffLayout[i][to];
+                let point1 = gridPointDict[pk1];
+                let point2 = gridPointDict[pk2];
+                let webPoints1 = [
+                    sectionPointDict[pk1].forward.web[0][0],
+                    sectionPointDict[pk1].forward.web[0][1],
+                    sectionPointDict[pk1].forward.web[1][0],
+                    sectionPointDict[pk1].forward.web[1][1],
+                ];
+                let webSide1 = sectionPointDict[pk1].forward.webSide;
+                let webPoints2 = [
+                    sectionPointDict[pk2].backward.web[0][0],
+                    sectionPointDict[pk2].backward.web[0][1],
+                    sectionPointDict[pk2].backward.web[1][0],
+                    sectionPointDict[pk2].backward.web[1][1],
+                ];
+                let webSide2 = sectionPointDict[pk2].backward.webSide;
+                let hstiff = GenHStiff(point1, point2, webPoints1, webPoints2, webSide1, webSide2, hStiffLayout[i], pk1, pk2);
+                model["children"].push(...hstiff.children);
+                model["parent"].push(...hstiff.parent);
             }
         }
     }
@@ -38,6 +82,155 @@ const vStiffFnMap = {
         return GenVStiff_Box(sectionPoint, gridPoint, vSection, gridkey, diaSectionName);
     },
 };
+
+export function GenHStiff(point1, point2, webPoints1, webPoints2, webSide1, webSide2, hstiffLayout, pk1, pk2) {
+    const startOffset = hstiffLayout[2] * 1;
+    const endOffset = hstiffLayout[3] * 1;
+    const width = hstiffLayout[4] * 1;
+    const thickness = hstiffLayout[5] * 1;
+    const chamfer = hstiffLayout[6] * 1;
+    const isTop = hstiffLayout[7];
+    const offset1 = hstiffLayout[8] * 1;
+    const offset2 = hstiffLayout[9] * 1;
+    let result = { parent: [], children: [] };
+
+    const bl1 = webPoints1[0];
+    const tl1 = webPoints1[1];
+    const br1 = webPoints1[2];
+    const tr1 = webPoints1[3];
+    const bl2 = webPoints2[0];
+    const tl2 = webPoints2[1];
+    const br2 = webPoints2[2];
+    const tr2 = webPoints2[3];
+
+    const lcot1 = (tl1.x - bl1.x) / (tl1.y - bl1.y);
+    const rcot1 = (tr1.x - br1.x) / (tr1.y - br1.y);
+    const lcot2 = (tl2.x - bl2.x) / (tl2.y - bl2.y);
+    const rcot2 = (tr2.x - br2.x) / (tr2.y - br2.y);
+
+    let lnode1 = isTop ? { x: tl1.x - lcot1 * offset1, y: tl1.y - offset1 } : { x: bl1.x + lcot1 * offset1, y: bl1.y + offset1 };
+    let lnode2 = isTop ? { x: tl2.x - lcot2 * offset2, y: tl2.y - offset2 } : { x: bl2.x + lcot2 * offset2, y: bl2.y + offset2 };
+    let lgn1 = PointToGlobal(lnode1, point1); //leftGlobalNode
+    let lgn2 = PointToGlobal(lnode2, point2);
+    // console.log("-----------------");
+    // console.log(point1, point2);
+    // console.log(lgn1, lgn2);
+    let rnode1 = isTop ? { x: tr1.x - rcot1 * offset1, y: tr1.y - offset1 } : { x: br1.x + rcot1 * offset1, y: br1.y + offset1 };
+    let rnode2 = isTop ? { x: tr2.x - rcot2 * offset2, y: tr2.y - offset2 } : { x: br2.x + rcot2 * offset2, y: br2.y + offset2 };
+    let rgn1 = PointToGlobal(rnode1, point1); //rightGlobalNode
+    let rgn2 = PointToGlobal(rnode2, point2);
+    let lvec = [lgn2.x - lgn1.x, lgn2.y - lgn1.y, lgn2.z - lgn1.z];
+    let lLength = Math.sqrt(lvec[0] ** 2 + lvec[1] ** 2 + lvec[2] ** 2);
+    let lLength2D = Math.sqrt(lvec[0] ** 2 + lvec[1] ** 2);
+    let rvec = [rgn2.x - rgn1.x, rgn2.y - rgn1.y, rgn2.z - rgn1.z];
+    let rLength = Math.sqrt(rvec[0] ** 2 + rvec[1] ** 2 + rvec[2] ** 2);
+    let rLength2D = Math.sqrt(rvec[0] ** 2 + rvec[1] ** 2);
+    let lCenterPoint = {
+        x: (lgn1.x + lgn2.x) / 2,
+        y: (lgn1.y + lgn2.y) / 2,
+        z: (lgn1.z + lgn2.z) / 2,
+        normalCos: lvec[1] / lLength2D,
+        normalSin: -lvec[0] / lLength2D,
+        offset: point1.offset + (lnode1.x + lnode2.x) / 2,
+        girderStation: (point1.girderStation + point2.girderStation) / 2,
+        dz: (lgn1.dz + lgn2.dz) / 2,
+        gradientX: (point1.gradientX + point2.gradientX) / 2,
+    };
+    let rCenterPoint = {
+        x: (rgn1.x + rgn2.x) / 2,
+        y: (rgn1.y + rgn2.y) / 2,
+        z: (rgn1.z + rgn2.z) / 2,
+        normalCos: rvec[1] / rLength2D,
+        normalSin: -rvec[0] / rLength2D,
+        offset: point1.offset + (rnode1.x + rnode2.x) / 2,
+        girderStation: (point1.girderStation + point2.girderStation) / 2,
+        dz: (rgn1.dz + rgn2.dz) / 2,
+        gradientX: (point1.gradientX + point2.gradientX) / 2,
+    };
+    let lcRefPt = GetRefPoint(lCenterPoint);
+    let rcRefpt = GetRefPoint(rCenterPoint);
+
+    let lRotX = Math.atan(lvec[2] / lLength2D);
+    let rRotX = Math.atan(rvec[2] / rLength2D);
+    let lRotY = Math.atan(lcot1);
+    let rRotY = Math.atan(rcot1);
+
+    let lPlate = [
+        { x: 0, y: -lLength / 2 + startOffset },
+        { x: 0, y: lLength / 2 - endOffset },
+        { x: width - chamfer, y: lLength / 2 - endOffset },
+        { x: width, y: lLength / 2 - endOffset - chamfer },
+        { x: width, y: -lLength / 2 + startOffset + chamfer },
+        { x: width - chamfer, y: -lLength / 2 + startOffset },
+    ];
+    let rPlate = [
+        { x: 0, y: -rLength / 2 + startOffset },
+        { x: 0, y: rLength / 2 - endOffset },
+        { x: -(width - chamfer), y: rLength / 2 - endOffset },
+        { x: -width, y: rLength / 2 - endOffset - chamfer },
+        { x: -width, y: -rLength / 2 + startOffset + chamfer },
+        { x: -(width - chamfer), y: -rLength / 2 + startOffset },
+    ];
+    let partName = pk1 + pk2;
+    let name2 = isTop ? "Top" : "Bottom";
+    // let sideY1 = isTop ? webSide1[1] - offset1 : webSide1[0] + offset1;
+    // let sideY2 = isTop ? webSide2[1] - offset1 : webSide2[0] + offset1;
+    // // leftPlateModel.model.sideView = [
+    // //     p(lCenterPoint.girderStation - lLength / 2 + startOffset, sideY1),
+    // //     p(lCenterPoint.girderStation + lLength / 2 - endOffset, sideY2),
+    // //     p(lCenterPoint.girderStation + lLength / 2 - endOffset, sideY2 + thickness),
+    // //     p(lCenterPoint.girderStation - lLength / 2 + startOffset, sideY1 + thickness),
+    // // ];
+
+    // lCenterPoint.dz = 0
+    let leftPlateModel = GenHPlate_rev(lPlate, lcRefPt, thickness, 0, 0, lRotX, lRotY, null, {}, {}, true);
+    leftPlateModel.meta = { ...leftPlateModel.meta, part: "test", key: "left" + name2, girder: point1.girderNum, seg: point1.segNum };
+    result["children"].push(leftPlateModel);
+
+    // result["children"].push({
+    //     ...leftPlate,
+    //     meta: { part: partName, key: "left" + name2, girder: point1.girderNum, seg: point1.segNum },
+    //     properties: {},
+    //     weld: [
+    //         {
+    //             type: "FF",
+    //             thickness1: thickness,
+    //             thickness2: thickness,
+    //             line: [[lPlate[0], lPlate[1]]],
+    //             sideView: {
+    //                 point: GetWeldingPoint([leftPlate["model"].sideView[0], leftPlate["model"].sideView[1]], 0.5),
+    //                 isUpper: true,
+    //                 isRight: true,
+    //                 isXReverse: false,
+    //                 isYReverse: false,
+    //             },
+    //         },
+    //     ],
+    //     textLabel: {},
+    //     dimension: {},
+    // });
+
+    let rightPlateModel = GenHPlate_rev(rPlate, rcRefpt, thickness, 0, 0, rRotX, rRotY);
+    rightPlateModel.meta = { ...rightPlateModel.meta, partk: partName, key: "right" + name2, girder: point1.girderNum, seg: point1.segNum };
+    result["children"].push(rightPlateModel);
+
+    // result["children"].push({
+    //     ...hPlateGenV2(rPlate, rCenterPoint, thickness, 0, 90, rRotX, rRotY, null, false, null, false),
+    //     meta: { part: partName, key: "right" + name2, girder: point1.girderNum, seg: point1.segNum },
+    //     properties: {},
+    //     weld: [
+    //         {
+    //             type: "FF",
+    //             thickness1: thickness,
+    //             thickness2: thickness,
+    //             line: [[rPlate[0], rPlate[1]]],
+    //         },
+    //     ],
+    //     textLabel: {},
+    //     dimension: {},
+    // });
+    return result;
+}
 
 function GenVStiff_Box(sectionPoint, point, diaSection, gridkey, vSectionName) {
     let result = {
@@ -224,7 +417,8 @@ function GenVStiff_Box(sectionPoint, point, diaSection, gridkey, vSectionName) {
         let stiffWidth = i % 2 === 0 ? diaSection.stiffWidth : -diaSection.stiffWidth;
         let stiffner = GetPlateRestPoint(stiffnerPoint[i][0], stiffnerPoint[i][1], 0, gradient, stiffWidth);
         let side2D = i % 2 === 0 ? null : [0, 3, 2, 1];
-        let stiffnerMeta = { part: gridkey, key: "stiffner" + i.toFixed(0), girder: point.girderNum, seg: point.segNum };
+        // let stiffnerMeta = { part: gridkey, key: "stiffner" + i.toFixed(0), girder: point.girderNum, seg: point.segNum };
+        let stiffnerMeta = { part: gridkey, key: "stiffner", girder: point.girderNum, seg: point.segNum };
         let stiffnerAdd = {
             properties: {},
             weld: [
@@ -322,24 +516,24 @@ function GenVStiff_Box(sectionPoint, point, diaSection, gridkey, vSectionName) {
         },
         dimension: {
             sectionView: [
-                ToDimAlign([sd.top[0], sd.top[sd.top.length - 1]], fontSize, layer, true, true, 0, sd.topIndex ? 0 : 1, 2),
-                ToDimAlign(sd.top, fontSize, layer, true, true, 0, sd.topIndex ? 0 : sd.top.length - 1, 1),
-                ToDimAlign([sd.bottom[0], sd.bottom[sd.bottom.length - 1]], fontSize, layer, true, false, 0, 0, 2),
-                ToDimAlign(sd.bottom, fontSize, layer, true, false, 0, 0, 1),
-                ToDimAlign(sd.left, fontSize, layer, false, false, 0, 0, 4),
-                ToDimAlign([...sd.left, ...sectionLeftDimPoints], fontSize, layer, false, false, 0, 0, 3),
-                ToDimAlign(sd.right, fontSize, layer, false, true, 0, 0, 4),
-                ToDimAlign([...sd.right, ...sectionRightDimPoints], fontSize, layer, false, true, 0, 0, 3),
+                ToDimCont([sd.top[0], sd.top[sd.top.length - 1]], fontSize, layer, true, true, 0, sd.topIndex ? 0 : 1, 2),
+                ToDimCont(sd.top, fontSize, layer, true, true, 0, sd.topIndex ? 0 : sd.top.length - 1, 1),
+                ToDimCont([sd.bottom[0], sd.bottom[sd.bottom.length - 1]], fontSize, layer, true, false, 0, 0, 2),
+                ToDimCont(sd.bottom, fontSize, layer, true, false, 0, 0, 1),
+                ToDimCont(sd.left, fontSize, layer, false, false, 0, 0, 4),
+                ToDimCont([...sd.left, ...sectionLeftDimPoints], fontSize, layer, false, false, 0, 0, 3),
+                ToDimCont(sd.right, fontSize, layer, false, true, 0, 0, 4),
+                ToDimCont([...sd.right, ...sectionRightDimPoints], fontSize, layer, false, true, 0, 0, 3),
             ],
             topView: [
-                ToDimAlign(topLeftDimPoints, fontSize, layer, false, false, 0, 0, 1),
-                ToDimAlign(topRightDimPoints, fontSize, layer, false, true, 0, 0, 1),
+                ToDimCont(topLeftDimPoints, fontSize, layer, false, false, 0, 0, 1),
+                ToDimCont(topRightDimPoints, fontSize, layer, false, true, 0, 0, 1),
             ],
             bottomView: [
-                ToDimAlign([bottomLeftDimPoints[0], bottomLeftDimPoints[bottomLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
-                ToDimAlign(bottomLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
-                ToDimAlign([bottomRightDimPoints[0], bottomRightDimPoints[bottomRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
-                ToDimAlign(bottomRightDimPoints, fontSize, layer, false, true, 0, 0, 3),
+                ToDimCont([bottomLeftDimPoints[0], bottomLeftDimPoints[bottomLeftDimPoints.length - 1]], fontSize, layer, false, false, 0, 0, 4),
+                ToDimCont(bottomLeftDimPoints, fontSize, layer, false, false, 0, 0, 3),
+                ToDimCont([bottomRightDimPoints[0], bottomRightDimPoints[bottomRightDimPoints.length - 1]], fontSize, layer, false, true, 0, 0, 4),
+                ToDimCont(bottomRightDimPoints, fontSize, layer, false, true, 0, 0, 3),
             ],
         },
     });
@@ -492,26 +686,26 @@ function GenVStiff_Plate(sectionPoint, point, vSection, gridkey, vSectionName) {
         },
         dimension: {
             sectionView: [
-                ToDimAlign([sd.top[0], sd.top[sd.top.length - 1]], fontSize, layer, true, true, 0, sd.topIndex ? 0 : 1, 2),
-                ToDimAlign(sd.top, fontSize, layer, true, true, 0, sd.topIndex ? 0 : sd.top.length - 1, 1),
-                ToDimAlign([sd.bottom[0], sd.bottom[sd.bottom.length - 1]], fontSize, layer, true, false, 0, 0, 2),
-                ToDimAlign(sd.bottom, fontSize, layer, true, false, 0, 0, 1),
-                ToDimAlign(sd.left, fontSize, layer, false, false, 0, 0, 4),
-                ToDimAlign([...sd.left, ...sectionLeftDimPoints], fontSize, layer, false, false, 0, 0, 3),
-                ToDimAlign(sd.right, fontSize, layer, false, true, 0, 0, 4),
-                ToDimAlign([...sd.right, ...sectionRightDimPoints], fontSize, layer, false, true, 0, 0, 3),
+                ToDimCont([sd.top[0], sd.top[sd.top.length - 1]], fontSize, layer, true, true, 0, sd.topIndex ? 0 : 1, 2),
+                ToDimCont(sd.top, fontSize, layer, true, true, 0, sd.topIndex ? 0 : sd.top.length - 1, 1),
+                ToDimCont([sd.bottom[0], sd.bottom[sd.bottom.length - 1]], fontSize, layer, true, false, 0, 0, 2),
+                ToDimCont(sd.bottom, fontSize, layer, true, false, 0, 0, 1),
+                ToDimCont(sd.left, fontSize, layer, false, false, 0, 0, 4),
+                ToDimCont([...sd.left, ...sectionLeftDimPoints], fontSize, layer, false, false, 0, 0, 3),
+                ToDimCont(sd.right, fontSize, layer, false, true, 0, 0, 4),
+                ToDimCont([...sd.right, ...sectionRightDimPoints], fontSize, layer, false, true, 0, 0, 3),
             ],
             topView: [
-                ToDimAlign(topLeftDimPoints, fontSize, layer, false, false, 0, 0, 0),
-                ToDimAlign(topRightDimPoints, fontSize, layer, false, true, 0, 0, 0),
-                ToDimAlign(topLeftDimPoints2, fontSize, layer, true, true, 0, 0, 0),
-                ToDimAlign(topRightDimPoints2, fontSize, layer, true, true, 0, 0, 0),
+                ToDimCont(topLeftDimPoints, fontSize, layer, false, false, 0, 0, 0),
+                ToDimCont(topRightDimPoints, fontSize, layer, false, true, 0, 0, 0),
+                ToDimCont(topLeftDimPoints2, fontSize, layer, true, true, 0, 0, 0),
+                ToDimCont(topRightDimPoints2, fontSize, layer, true, true, 0, 0, 0),
             ],
             bottomView: [
-                ToDimAlign(bottomLeftDimPoints, fontSize, layer, false, false, 0, 0, 0),
-                ToDimAlign(bottomRightDimPoints, fontSize, layer, false, true, 0, 0, 0),
-                ToDimAlign(topLeftDimPoints2, fontSize, layer, true, true, 0, 0, 0),
-                ToDimAlign(topRightDimPoints2, fontSize, layer, true, true, 0, 0, 0),
+                ToDimCont(bottomLeftDimPoints, fontSize, layer, false, false, 0, 0, 0),
+                ToDimCont(bottomRightDimPoints, fontSize, layer, false, true, 0, 0, 0),
+                ToDimCont(topLeftDimPoints2, fontSize, layer, true, true, 0, 0, 0),
+                ToDimCont(topRightDimPoints2, fontSize, layer, true, true, 0, 0, 0),
             ],
         },
     });
