@@ -1,4 +1,5 @@
 import { LiteGraph, THREE } from "global";
+import { GenMainPartModel, GenStPointDict, InitPoint, MainPartDefaultDataAutoGen, MainPartInputFit, SectionPointDict, StationList } from "./cpbModel";
 import { GenBoxGirder2D } from "./drawing";
 import {
     FittingGridInput,
@@ -12,7 +13,6 @@ import {
     GenJackupModel,
     GenSectionPointDict,
     GenSpliceModel,
-    GenSteelBoxModel,
     GenStudModel,
     GenSupportModel,
     GenVStiffModel,
@@ -50,7 +50,7 @@ LiteGraph.registerNodeType("model/GenBasicSections", GenBasicSections);
 LiteGraph.registerNodeType("model/GenSectionPointDict", GenSectionPointDict);
 LiteGraph.registerNodeType("model/GenDefaultETCPartData", GenDefaultETCPartData);
 // steelbox
-LiteGraph.registerNodeType("model/GenSteelBoxModel", GenSteelBoxModel);
+LiteGraph.registerNodeType("model/GenSteelBoxModel", GenMainPartModel);
 // diaphragm
 LiteGraph.registerNodeType("model/GenDiaphragmModel", GenDiaphragmModel);
 // stiffner
@@ -76,3 +76,14 @@ LiteGraph.registerNodeType("model/GenBoxGirder2D", GenBoxGirder2D);
 
 /* test */
 LiteGraph.registerNodeType("model/compareTest", compareTest);
+
+
+/*drlim_node for CPB girder bridge*/
+LiteGraph.registerNodeType("CPB/MainPartDefaultDataAutoGen", MainPartDefaultDataAutoGen);
+LiteGraph.registerNodeType("CPB/MainPartInputFit", MainPartInputFit);
+LiteGraph.registerNodeType("CPB/GenStPointDict", GenStPointDict);
+LiteGraph.registerNodeType("CPB/StationList", StationList);
+LiteGraph.registerNodeType("CPB/InitPoint", InitPoint);
+LiteGraph.registerNodeType("CPB/SectionPointDict", SectionPointDict);
+LiteGraph.registerNodeType("CPB/GenMainPartModel", GenMainPartModel);
+
