@@ -1,12 +1,14 @@
 import { GetArcPoints, Loft, PointToSkewedGlobal, TwoLineIntersect } from "@nexivil/package-modules";
 import { DividingPoint } from "@nexivil/package-modules/src/temp";
 import { FilletPoints, SteelBox } from "./3D";
-import { DiaShapeDictV2 } from "./diaVstiffXbeam";
+import { DiaShapeDictV2, VstiffShapeDictV2, XbeamDictV2 } from "./diaVstiffXbeam";
 
 export function CPBMainPart(stPointDict, girderStation, sectionPointDict, MainPartInput, MainPartSectionInput, entrance) {
     let stboxModel = SteelBoxModel(girderStation, sectionPointDict, entrance)
     let diaModel = DiaShapeDictV2(stPointDict, sectionPointDict, MainPartInput.point.D, MainPartSectionInput.dia, null)
-    return [...stboxModel['children'], ...diaModel.diaDict['children']]
+    let vModel = VstiffShapeDictV2(stPointDict, sectionPointDict, MainPartInput.point.V, MainPartSectionInput.vStiff, null)
+    let xbeamModel = XbeamDictV2(stPointDict, sectionPointDict, MainPartInput.xbeamLayout, MainPartSectionInput.xBeam, null)
+    return [...stboxModel['children'], ...diaModel.diaDict['children'], ...vModel['children'],...xbeamModel.xbeamDict['children']]
 }
 
 export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
@@ -68,7 +70,7 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
         splicer.forEach(function (sp) {
           if (pk2.slice(2, 4) === sp) { //거대 개수 9개 제한 
             result["children"].push(new SteelBox(GirderPoints(uflangePointList), sectionPointDict[pk1].forward.input.tuf, null, 'steelBox', 
-            {cat1: 'Girder' + String(i*1+1), part: segName, key: keyname, girder: i * 1 + 1, seg: segNum, }))
+            {group: 'Girder' + String(i*1+1), part: segName, key: keyname, girder: i * 1 + 1, seg: segNum, }))
                 
             UFi += 1;
             //initiallize
@@ -86,7 +88,7 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
         splicer.forEach(function (sp) {
           if (pk2.slice(2, 4) === sp) {
             result["children"].push(new SteelBox(GirderPoints(lflangePointList), sectionPointDict[pk1].forward.input.tlf, null, 'steelBox', 
-            {cat1: 'Girder' + String(i*1+1), part: segName, key: keyname, girder: i * 1 + 1, seg: segNum, }))
+            {group: 'Girder' + String(i*1+1), part: segName, key: keyname, girder: i * 1 + 1, seg: segNum, }))
 
             Bi += 1;
             bottomPoints = [[], [], []];
@@ -104,9 +106,9 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
           if (pk2.slice(2, 4) === sp) {
 
             result["children"].push(new SteelBox(leftWebPoints, sectionPointDict[pk1].forward.input.tw, null, 'steelBox', 
-            {cat1: 'Girder' + String(i*1+1), part: segName, key: "G" + (i * 1 + 1).toString() + "LeftWeB" + Wi, girder: i * 1 + 1, seg: segNum, }))
+            {group: 'Girder' + String(i*1+1), part: segName, key: "G" + (i * 1 + 1).toString() + "LeftWeB" + Wi, girder: i * 1 + 1, seg: segNum, }))
             result["children"].push(new SteelBox(rightWebPoints, sectionPointDict[pk1].forward.input.tw, null, 'steelBox', 
-            {cat1: 'Girder' + String(i*1+1), part: segName, key: "G" + (i * 1 + 1).toString() + "RightWeB" + Wi, girder: i * 1 + 1, seg: segNum, }))
+            {group: 'Girder' + String(i*1+1), part: segName, key: "G" + (i * 1 + 1).toString() + "RightWeB" + Wi, girder: i * 1 + 1, seg: segNum, }))
             
             Wi += 1;
             leftWebPoints = [[], [], []];
@@ -133,7 +135,7 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
                 L2[k].forEach(element => bottomRibPoints[k].push(PointToSkewedGlobal(element, point2)));
               }
               result["children"].push(new SteelBox(bottomRibPoints, sectionPointDict[pk1].forward.input.Lrib.thickness, null, 'steelBox', 
-              {cat1: 'Girder' + String(i*1+1), part: segName, key: "G" + (i * 1 + 1).toString() + "lRib" + lRibi, girder: i * 1 + 1, seg: segNum, }))
+              {group: 'Girder' + String(i*1+1), part: segName, key: "G" + (i * 1 + 1).toString() + "lRib" + lRibi, girder: i * 1 + 1, seg: segNum, }))
               lRibi += 1;
               bottomRibPoints = [];
             }
@@ -156,7 +158,7 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
                 L2[k].forEach(element => topRibPoints[k].push(PointToSkewedGlobal(element, point2)));
               }
               result["children"].push(new SteelBox(topRibPoints, sectionPointDict[pk1].forward.input.Urib.thickness, null, 'steelBox', 
-              {cat1: 'Girder' + String(i*1+1), part: segName, key: keyname, girder: i * 1 + 1, seg: segNum, }))
+              {group: 'Girder' + String(i*1+1), part: segName, key: keyname, girder: i * 1 + 1, seg: segNum, }))
               uRibi += 1;
               topRibPoints = [];
             }
@@ -189,7 +191,7 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
           bottomConcPoints.push(L2Global)
           bottomConcGridPoints.push({ key: pk2, point: point2 })
           result["children"].push(new Loft(bottomConcPoints, true, 'slab', 
-          {cat1: 'Girder' + String(i*1+1), part: segName, key: keyname, girder: (i * 1 + 1), seg: segNum}))
+          {group: 'Girder' + String(i*1+1), part: segName, key: keyname, girder: (i * 1 + 1), seg: segNum}))
           lConci += 1;
           bottomConcPoints = [];
           bottomConcGridPoints = [];
@@ -258,8 +260,6 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
       uf2[k].forEach(element => plate2[k].push(PointToSkewedGlobal(element, point2)));
       uf3[k].forEach(element => plate3[k].push(PointToSkewedGlobal(element, point2)));
     }
-    console.log("check1", sectionPointDict[pk1], uf0, uf1, uf2, uf3)
-    console.log("check2", plate0, plate1, plate2, plate3)
     if (point2.mainStation > point1.mainStation) {
       // outborder 
       if (!plateCompare(uf0, uf1)) {

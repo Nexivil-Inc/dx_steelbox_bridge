@@ -102,7 +102,6 @@ function optimizeSplice(spList, totalSp, segMaxLength, firstMaxLength, lastMaxLe
         optIndex.push(newSp)
     }
     optIndex.push(lastIndex);
-    console.log(spList, optIndex)
     return optIndex
 }
 
@@ -139,7 +138,6 @@ export function StiffPointAutoGen(girderLayout, end, support, auto, SEShape) {
             skew1 = point1.skew
             skew2 = point2.skew
             let sLength = point2.mainStation - point1.mainStation;
-            console.log("sLength", sLength, gridPointDict)
             let diaNum = Math.floor(sLength / diaSpacing);
             let remain = sLength % diaSpacing;
             let diaList = [];

@@ -1,4 +1,4 @@
-import { Extrude, GetArcPoints, Model } from "@nexivil/package-modules";
+import { Extrude, GetArcPoints, Model, Point, PointToGlobal } from "@nexivil/package-modules";
 import {THREE, BufferGeometryUtils} from 'global'
 
 export class SteelBox extends Model {
@@ -11,6 +11,18 @@ export class SteelBox extends Model {
 
     get threeFunc() {
         return initPoint => SteelBoxView(this.points, initPoint);
+    }
+}
+export class Bolt extends Model {
+    constructor(layout, bolt, refPoint, material = "default", meta = {}) {
+        super(meta, material);
+        this.type = "bolt";
+        this.bolt = bolt;
+        this.layout = layout;
+        this.refPoint = refPoint?? null
+    }
+    get threeFunc() {
+      return InitPoint => boltView2(this.refPoint, this.layout, this.bolt, InitPoint);
     }
 }
 
@@ -101,4 +113,27 @@ export function SteelBoxView(steelBoxDict, initPoint) {
       result[1].push(plt2[1][3])
     }
     return result
-  }
+}
+export function boltView2(refPoint, layout, bolt, initPoint) {
+    let Geos2 = [];
+    let xRotation = refPoint?.xRotation??0;
+    let yRotation = refPoint?.yRotation??0;
+    let zRotation = refPoint?.zRotation??0;
+    // 볼트배치 자동계산 모듈 // 2020.7.7 by drlim
+    for (let i in layout) {
+        let point = PointToGlobal(new Point(layout[i][0], layout[i][1]), refPoint);
+        Geos2.push(boltGeometry(bolt, point, xRotation, yRotation, zRotation, initPoint));
+    }
+    return BufferGeometryUtils.mergeBufferGeometries(Geos2)
+}
+
+export function boltGeometry(bolt, point, xRotation, yRotation, zRotation, initPoint) {
+    var radius = bolt.size / 2
+    var geometry = new THREE.CylinderBufferGeometry(radius, radius, bolt.t * 2 + bolt.l, 6, 1)
+    geometry.rotateX(Math.PI / 2)
+    geometry.rotateX(xRotation)
+    geometry.rotateY(yRotation)
+    geometry.rotateZ(zRotation)
+    geometry.translate(point.x - initPoint.x, point.y - initPoint.y, point.z - initPoint.z)
+    return geometry
+}
