@@ -1,13 +1,15 @@
-import { Extrude, Point, PointToSkewedGlobal, RefPoint } from "@nexivil/package-modules";
+import { Extrude, Loft, PlateRestPoint, Point, PointToSkewedGlobal, RefPoint, TwoPointsLength } from "@nexivil/package-modules";
+import { scallop, Stud, toRefPoint } from "@nexivil/package-modules/src/temp";
 import { Bolt } from "./3D";
-import { BoltLayout } from "./diaVstiffXbeam";
+import { BoltLayout, vPlateGenV2 } from "./diaVstiffXbeam";
 
 export function CPBEtcPart(stPointDict, girderStation, sectionPointDict, etcPartInput) {
     let hStiffModel = HorStiffDict(stPointDict, sectionPointDict, etcPartInput.hStiff, etcPartInput.isStiff??false)
-    console.log(etcPartInput.hStiff, etcPartInput.isStiff, hStiffModel)
-    return [ ...hStiffModel['children']]
+    let jackupModel = JackupStiffDictV2(stPointDict, sectionPointDict, etcPartInput.jackup)
+    let studModel = StudPoint(girderStation, sectionPointDict, etcPartInput.stud, etcPartInput.bottomStud)
+    let spport = SupportGenerator(etcPartInput.supportFixed, etcPartInput.support, stPointDict, sectionPointDict)
+    return [ ...hStiffModel['children'], ...jackupModel['children'], ...studModel['children'], ...spport["model"]['children']]
 }
-
 
 export function SplicePlateV2(stPointDict, sectionPointDict, sPliceLayout, sPliceSectionList) {
     // VstiffShapeDict(
@@ -610,4 +612,737 @@ export function HstiffGenV2(point1, point2, webPoints1, webPoints2, webSide1, we
         ))
 
     return result;
+}
+
+export function JackupStiffDictV2(gridPoint,
+    sectionPointDict,
+    jackupData, // position, layoutList, length, height, thickness, chamfer
+  ) {
+    let result = {parent : [], children : []}
+    for (let i in jackupData) {
+      let gridkey = jackupData[i][0]
+      let webPoints = sectionPointDict[gridkey].forward.web
+      let dia = jackup0V2(webPoints, gridPoint[gridkey], jackupData[i], gridkey, i);
+      result["children"].push(...dia.children)
+      result["parent"].push(...dia.parent)
+    }
+    return result
+  }
+  
+  export function jackup0V2(webPoints, point, jackupData, gridkey, sectionNum) {
+    //ds 입력변수
+    let result = { parent : [], children : []};
+    let layout = []
+    let l1 = jackupData[1].split(',');
+    l1.forEach(elem => layout.push(elem.trim() * 1))
+    let length = jackupData[2]*1??0;
+    let height = jackupData[3]*1??0;
+    let thickness = jackupData[4]*1??0;
+    let chamfer = jackupData[5]*1??0;
+    //  임시 입력변수
+  
+    const bl = webPoints[0][0];
+    const bl2 = webPoints[0][3];
+    const tl = webPoints[0][1];
+    const br = webPoints[1][0];
+    const br2 = webPoints[1][3];
+  
+    const tr = webPoints[1][1];
+    const lwCot = (tl.x - bl.x) / (tl.y - bl.y)
+    const rwCot = (tr.x - br.x) / (tr.y - br.y)
+    // const gradient = (tr.y - tl.y) / (tr.x - tl.x)
+  
+    let upperPoints = [
+      { x: bl.x + lwCot * length, y: bl.y + length },
+      { x: br.x + rwCot * length, y: br.y + length },
+      { x: bl2.x + lwCot * length, y: bl2.y + length },
+      { x: br2.x + rwCot * length, y: br2.y + length }
+  
+    ];
+    let left = PlateRestPoint(bl, upperPoints[0], 0, 0, height)
+    let leftPoints = [];
+    leftPoints.push(left[0])
+    leftPoints.push(left[1]);
+    leftPoints.push(...scallop(left[1], left[2], left[3], chamfer, 1));
+    leftPoints.push(left[3])
+    let right = PlateRestPoint(br, upperPoints[1], 0, 0, -height)
+    let rightPoints = [];
+    rightPoints.push(right[0])
+    rightPoints.push(right[1]);
+    rightPoints.push(...scallop(right[1], right[2], right[3], chamfer, 1));
+    rightPoints.push(right[3])
+    let left1 = PlateRestPoint(bl2, upperPoints[2], 0, 0, -height)
+    let leftPoints2 = [];
+    leftPoints2.push(left1[0])
+    leftPoints2.push(left1[1]);
+    leftPoints2.push(...scallop(left1[1], left1[2], left1[3], chamfer, 1));
+    leftPoints2.push(left1[3])
+    let right1 = PlateRestPoint(br2, upperPoints[3], 0, 0, height)
+    let rightPoints2 = [];
+    rightPoints2.push(right1[0])
+    rightPoints2.push(right1[1]);
+    rightPoints2.push(...scallop(right1[1], right1[2], right1[3], chamfer, 1));
+    rightPoints2.push(right1[3])
+    let partKey = gridkey + "J"+ sectionNum
+    let ref = toRefPoint(point,true)
+    for (let i in layout) {
+      let newPoint = new RefPoint(PointToSkewedGlobal({ x: 0, y: 0, z : -layout[i] }, point), ref.xAxis, Math.PI/2)
+      // result["left1" + i] = vPlateGen(leftPoints, newPoint, thickness, [], 15, null, null, [], null, [1, 2, 4, 0], [0, 4])
+      // result["right1" + i] = vPlateGen(rightPoints, newPoint, thickness, [], 15, null, null, [], null, null, [0, 4])
+      let leftJackup = vPlateGenV2(leftPoints, point, [], 15, null, null)
+      let rightJackup = vPlateGenV2(rightPoints, point, [], 15, null, null)
+      result["children"].push(
+        new Extrude(leftJackup, thickness, {refPoint : newPoint}, "steelBox", 
+        { part: partKey, key: "left1" + i , girder : point.girderNum, seg : point.segNum}),
+        new Extrude(rightJackup, thickness, {refPoint : newPoint}, "steelBox", 
+        { part: partKey, key: "right1" + i , girder : point.girderNum, seg : point.segNum}),
+        )
+      if (jackupData[6]) {
+        let leftJackup2 = vPlateGenV2(leftPoints2, point, [], 15, null, null)
+        let rightJackup2 = vPlateGenV2(rightPoints2, point, [], 15, null, null)
+        result["children"].push(
+            new Extrude(leftJackup2, thickness, {refPoint : newPoint}, "steelBox", 
+            { part: partKey, key: "left2" + i , girder : point.girderNum, seg : point.segNum}),
+            new Extrude(rightJackup2, thickness, {refPoint : newPoint}, "steelBox", 
+            { part: partKey, key: "right2" + i , girder : point.girderNum, seg : point.segNum}),
+            )
+      }
+    }
+    return result
+  }
+
+  export function StudPoint(girderStation, sectionPointDict, topStudData, bottomStudData) {
+    const studInfo = topStudData.studInfo
+    // {
+    //     "dia": 25,
+    //     "height": 150,
+    //     "headDia": 38,
+    //     "headDepth": 10,
+    //     "distance": 100,
+    //     "edgeDistance" : 100
+    // }
+    const topPlateStudLayout = topStudData.layout
+    let studList = [];
+    let segIndex = {};
+    for (let i in topPlateStudLayout) {
+        let ts = { //...topPlateStudLayout[i] };
+            start: topPlateStudLayout[i][0],
+            end: topPlateStudLayout[i][1],
+            startOffset: topPlateStudLayout[i][2],
+            endOffset: topPlateStudLayout[i][3],
+            spacing: topPlateStudLayout[i][4],
+            layout: topPlateStudLayout[i][5]
+        };
+        // let layout = ts.layout.split(',')
+        const sp = ts.start
+        let girderIndex = sp.substr(1, 1) * 1 - 1
+        if (segIndex.hasOwnProperty(girderIndex)) {
+            if (sp.includes("SP")) {
+                segIndex[girderIndex] += 1
+            }
+        } else {
+            segIndex[girderIndex] = 1
+        }
+
+        let gridKeys = []
+        let gridPoints = []
+        let cr = false
+        let dummyStation = Infinity;
+        for (let j in girderStation[girderIndex]) {
+
+            if (girderStation[girderIndex][j].key === ts.start) {
+                cr = true
+            }
+            if (dummyStation !== girderStation[girderIndex][j].station) {
+                if (cr) {
+                    gridKeys.push(girderStation[girderIndex][j].key)
+                    gridPoints.push(girderStation[girderIndex][j].point)
+                }
+            }
+            if ((girderStation[girderIndex][j].key === ts.end)) {
+                cr = false
+            }
+            //
+            if (cr){
+                dummyStation = girderStation[girderIndex][j].station
+            }
+        }
+        let totalLength = 0;
+        let segLength = 0;
+       
+        for (let j = 0; j < gridKeys.length - 1; j++) {
+            let points = [];
+            let sidePoints = [];
+            let spts = [];
+            let epts = [];
+            let sideStartY = sectionPointDict[gridKeys[j]].forward.uflangeSide[1];
+            let sideEndY = sectionPointDict[gridKeys[j + 1]].backward.uflangeSide[1];
+            
+            for (let p = 0; p < 3; p++) {
+                let startFlangePoints = sectionPointDict[gridKeys[j]].forward.uflange[p];
+                let endFlangePoints = sectionPointDict[gridKeys[j + 1]].backward.uflange[p];
+                if (startFlangePoints.length > 0 && endFlangePoints.length > 0) {
+                    let startNode = startFlangePoints[3]
+                    let endNode = endFlangePoints[3]
+                    let startW = Math.abs(startFlangePoints[3].x - startFlangePoints[2].x)
+                    let endW = Math.abs(endFlangePoints[3].x - endFlangePoints[2].x)
+                    let sign = p === 1 ? -1 : 1;
+                    // 효명 스터드배치를 위한 임시코드 ==>
+                    if (p < 2) { //개구형 구간의 경우
+                        let dx = [
+                            studInfo.edgeDistance, 
+                            studInfo.edgeDistance + studInfo.distance, 
+                            studInfo.edgeDistance + 2 * studInfo.distance, 
+                            (studInfo.edgeDistance + 2 * studInfo.distance) * 0.6 + (startW - studInfo.edgeDistance) * 0.4, 
+                            startW - studInfo.edgeDistance]
+                        let dx2 = [
+                            studInfo.edgeDistance, 
+                            studInfo.edgeDistance + studInfo.distance, 
+                            studInfo.edgeDistance + 2 * studInfo.distance, 
+                            (studInfo.edgeDistance + 2 * studInfo.distance) * 0.6 + (endW - studInfo.edgeDistance) * 0.4, 
+                            endW - studInfo.edgeDistance]
+                        for (let k = 0; k < 5; k++) {
+                            spts.push({ x: startNode.x + sign * dx[k], y: startNode.y + sign * dx[k] * gridPoints[j].gradientY });
+                            epts.push({ x: endNode.x + sign * dx2[k], y: endNode.y + sign * dx2[k] * gridPoints[j + 1].gradientY });
+                        }
+                    } else { //박스구간인 경우
+                        let startNode2 = startFlangePoints[2]
+                        let endNode2 = endFlangePoints[2]
+                        let dx = [
+                            studInfo.edgeDistance, 
+                            studInfo.edgeDistance + studInfo.distance, 
+                            studInfo.edgeDistance + 2 * studInfo.distance, 
+                            startW / 2 * 0.4  + (studInfo.edgeDistance + 2 * studInfo.distance) * 0.6, 
+                            startW / 2 * 0.8  + (studInfo.edgeDistance + 2 * studInfo.distance) * 0.2, 
+                        ]
+                        let dx2 = [
+                            studInfo.edgeDistance, 
+                            studInfo.edgeDistance + studInfo.distance, 
+                            studInfo.edgeDistance + 2 * studInfo.distance, 
+                            endW / 2 * 0.4  + (studInfo.edgeDistance + 2 * studInfo.distance) * 0.6, 
+                            endW / 2 * 0.8  + (studInfo.edgeDistance + 2 * studInfo.distance) * 0.2, 
+                        ]
+                        for (let k = 0; k < 5; k++) {
+                            spts.push({ x: startNode.x + dx[k], y: startNode.y + dx[k] * gridPoints[j].gradientY });
+                            spts.push({ x: startNode2.x - dx[k], y: startNode2.y - dx[k] * gridPoints[j].gradientY });
+                            epts.push({ x: endNode.x + dx2[k], y: endNode.y + dx2[k] * gridPoints[j + 1].gradientY });
+                            epts.push({ x: endNode2.x - dx2[k], y: endNode2.y - dx2[k] * gridPoints[j + 1].gradientY });
+                        }
+                    }
+                }
+            }
+
+            spts.sort( function(a,b){ return a.x < b.x? -1:1})
+            epts.sort( function(a,b){ return a.x < b.x? -1:1})
+
+            let globalSpts = [];
+            let globalEpts = [];
+
+            spts.forEach(function (elem) { globalSpts.push(PointToSkewedGlobal(elem, gridPoints[j])) })
+            epts.forEach(function (elem) { globalEpts.push(PointToSkewedGlobal(elem, gridPoints[j + 1])) })
+            let sideSpt = { x: gridPoints[j].girderStation, y: sideStartY, z: 0 }
+            let sideEpt = { x: gridPoints[j + 1].girderStation, y: sideEndY, z: 0 }
+
+            
+            segLength = Math.max(Math.sqrt((globalSpts[0].x - globalEpts[0].x) ** 2 + (globalSpts[0].y - globalEpts[0].y) ** 2),
+            Math.sqrt((globalSpts[globalSpts.length-1].x - globalEpts[globalEpts.length-1].x) ** 2 + (globalSpts[globalSpts.length-1].y - globalEpts[globalEpts.length-1].y) ** 2))
+            
+            
+
+            totalLength += segLength
+            let remainder = (totalLength - ts.startOffset) % ts.spacing;
+            let sNum = segLength - remainder > 0 ? Math.floor((segLength - remainder) / ts.spacing) + 1 : 0
+            let x = 0;
+            for (let k = 0; k < sNum; k++) {
+                if (j < gridKeys.length - 2 || k > 0) {
+                    x = remainder + k * ts.spacing;
+                } else {
+                    x = ts.endOffset;
+                }
+                let tempPoints = []
+                for (let l = 0; l < spts.length; l++) { // 항상 10개가 나올 것임.
+                    tempPoints.push({
+                        x: x / segLength * globalSpts[l].x + (segLength - x) / segLength * globalEpts[l].x,
+                        y: x / segLength * globalSpts[l].y + (segLength - x) / segLength * globalEpts[l].y,
+                        z: x / segLength * globalSpts[l].z + (segLength - x) / segLength * globalEpts[l].z
+                    })
+                }
+                points.push(tempPoints[0])
+                for (let t =0; t<tempPoints.length -1; t++){
+                    if (TwoPointsLength(tempPoints[t], tempPoints[t+1]) > studInfo.distance*0.99){
+                        points.push(tempPoints[t+1]) 
+                    }
+                }
+                sidePoints.push(
+                    {
+                        x: x / segLength * sideSpt.x + (segLength - x) / segLength * sideEpt.x,
+                        y: x / segLength * sideSpt.y + (segLength - x) / segLength * sideEpt.y,
+                        z: x / segLength * sideSpt.z + (segLength - x) / segLength * sideEpt.z
+                    }
+                )
+
+            }
+            let groupName = "G" + (girderIndex + 1).toString() + "SEG" + segIndex[girderIndex].toString()
+            if (points.length > 0) {
+                studList.push(
+                    new Stud(0,0,0, points, studInfo, {}, 'stud', {
+                        key: groupName, part: gridKeys[j] + gridKeys[j+1],
+                        girder: girderIndex + 1,
+                        seg: segIndex[girderIndex],
+                        category: "topFlange"
+                    })
+                    )
+            }
+        }
+    }
+    let bottomStud = BottomStudPoint(girderStation, sectionPointDict, bottomStudData)
+    studList.push(...bottomStud.studList)
+
+    let result = {
+        parent: [
+            {
+                name: "stud",
+                properties: {
+                    H: studInfo.height,
+                    D: studInfo.dia,
+                    nB: 10,
+                    nP: 3,
+                    t: 100,
+                    shMin: 100,
+                    svB: 450,
+                    svP: 450,
+                }
+            },
+            {
+                name: "stud2",
+                properties: {
+                    H: 100,
+                    D: 22,
+                    n: 12,
+                    shMin: 75,
+                    sv: 450,
+                },
+            }
+        ],
+        children: studList,
+        // dimension: bottomStud.dimension,
+        // section: bottomStud.section
+    }
+
+    return result //{ studList, studDict: { ...studDict, ...bottomStud.studDict } }
+}
+
+export function BottomStudPoint(girderStation, sectionPointDict, bottomStudData) {
+    //1차적으로는 station을 기준으로 배치하고 향후 옵션(곡선교에 대한)을 추가해서, 실간격을 반영할지 여부를 판단할 것임.
+    let studList = [];
+    let studDict = {};
+    let section = [];
+    let dimension = [];
+    const studInfo = bottomStudData.studInfo
+    // {
+    //     "dia": 22,
+    //     "height": 100,
+    //     "headDia": 38,
+    //     "headDepth": 10,
+    //     "endOffset": 200,
+    //     "spliceOffset": 400,
+    //     "spacing": 400
+    // }
+    const layout = bottomStudData.layout
+    // [150, 225, 300, 500, 700, 900]//[200, 500]; //웹으로부터 2개씩
+    const sideLayout = bottomStudData.sideLayout
+    // [150, 300];
+    const diaPhragmLayout = bottomStudData.diaPhragmLayout
+    // 150; //바닥면 기준으로 150mm 이격
+
+    let studPoints = []
+    for (let i in girderStation) {
+        let cr = false
+        let subGrid = [];
+        let girder = i * 1 + 1
+        let seg = 1;
+        let span = 0;
+        for (let j in girderStation[i]) {
+
+            let key = girderStation[i][j].key
+            let point = girderStation[i][j].point
+            let bool = ["D", "V", "SP"].some(el => key.includes(el));
+            if (key.includes("SP")) { seg += 1 }
+            if (!key.includes("SP") && key.includes("S")) { span += 1 }
+            if (sectionPointDict[key].backward.input.Tcl === 0 && sectionPointDict[key].forward.input.Tcl > 0) {
+                cr = true
+            }
+            if (bool && cr) {
+                subGrid.push({ girder, seg, span, key, point })
+            }
+            if (cr && bool && sectionPointDict[key].forward.input.Tcl === 0) {
+                cr = false
+                studPoints.push(subGrid)
+                subGrid = [];
+            }
+
+        }
+
+    }
+    for (let i in studPoints) {
+        let segLength = 0;
+        let partName = "G" + studPoints[i][0].girder.toString() + "lConc" + String(i * 1 + 1)
+
+        for (let j = 0; j < studPoints[i].length - 1; j++) {
+            let points = [];
+            let sidePoints = [];
+            let dsSidePoints = [];
+            let deSidePoints = [];
+            let rwSidePoints = [];
+            let leftPoints = [];
+            let rightPoints = [];
+            let spts = [];
+            let epts = [];
+            let lspts = [];
+            let rspts = [];
+            let lepts = [];
+            let repts = [];
+            let dspts = []; //다이아프램 스터드
+            let depts = []; //다이아프램 스터드
+            let skey = studPoints[i][j].key;
+            let ekey = studPoints[i][j + 1].key;
+            let startPoint = studPoints[i][j].point
+            let endPoint = studPoints[i][j + 1].point
+
+            let startLefttan = (sectionPointDict[skey].forward.web[0][1].x - sectionPointDict[skey].forward.web[0][0].x) / (sectionPointDict[skey].forward.web[0][1].y - sectionPointDict[skey].forward.web[0][0].y);
+            let startRighttan = (sectionPointDict[skey].forward.web[1][1].x - sectionPointDict[skey].forward.web[1][0].x) / (sectionPointDict[skey].forward.web[1][1].y - sectionPointDict[skey].forward.web[1][0].y)
+            let endLefttan = (sectionPointDict[ekey].backward.web[0][1].x - sectionPointDict[ekey].backward.web[0][0].x) / (sectionPointDict[ekey].backward.web[0][1].y - sectionPointDict[ekey].backward.web[0][0].y);
+            let endRighttan = (sectionPointDict[ekey].backward.web[1][1].x - sectionPointDict[ekey].backward.web[1][0].x) / (sectionPointDict[ekey].backward.web[1][1].y - sectionPointDict[ekey].backward.web[1][0].y)
+
+            let lRad = Math.atan(startLefttan)
+            let rRad = Math.atan(startRighttan)
+            let rot = Math.atan2(studPoints[i][j + 1].point.y - studPoints[i][j].point.y, studPoints[i][j + 1].point.x - studPoints[i][j].point.x) - Math.PI / 2
+            // let rot1 = Math.atan2(studPoints[i][j].point.normalSin, studPoints[i][j].point.normalCos)
+            // let rot2 = Math.atan2(studPoints[i][j + 1].point.normalSin, studPoints[i][j + 1].point.normalCos)
+
+            let startLeftPoint = sectionPointDict[skey].forward.web[0][0]
+            let startRightPoint = sectionPointDict[skey].backward.web[1][0]
+            let endLeftPoint = sectionPointDict[ekey].forward.web[0][0]
+            let endRightPoint = sectionPointDict[ekey].backward.web[1][0]
+            let sideStartY = sectionPointDict[skey].forward.lflangeSide[0];
+            let sideEndY = sectionPointDict[ekey].backward.lflangeSide[0];
+
+            for (let l in layout) {
+                spts.push({ x: startLeftPoint.x + layout[l], y: startLeftPoint.y });
+                spts.push({ x: startRightPoint.x - layout[l], y: startRightPoint.y });
+                epts.push({ x: endLeftPoint.x + layout[l], y: endLeftPoint.y });
+                epts.push({ x: endRightPoint.x - layout[l], y: endRightPoint.y });
+                if (skey.includes("D")) {
+                    dspts.push({ x: startLeftPoint.x + layout[l], y: startLeftPoint.y + diaPhragmLayout });
+                    dspts.push({ x: startRightPoint.x - layout[l], y: startRightPoint.y + diaPhragmLayout });
+                }
+                if (ekey.includes("D")) {
+                    depts.push({ x: endLeftPoint.x + layout[l], y: endLeftPoint.y + diaPhragmLayout });
+                    depts.push({ x: endRightPoint.x - layout[l], y: endRightPoint.y + diaPhragmLayout });
+                }
+            }
+            dspts.sort(function (a, b) { return a.x > b.x ? 1 : -1 })
+            depts.sort(function (a, b) { return a.x > b.x ? 1 : -1 })
+            for (let l in sideLayout) {
+                let h1 = sectionPointDict[skey].forward.input.Tcl - sideLayout[l]
+                let h2 = sectionPointDict[ekey].backward.input.Tcl - sideLayout[l]
+                lspts.push({ x: startLeftPoint.x + h1 * startLefttan, y: startLeftPoint.y + h1, h: h1 })
+                rspts.push({ x: startRightPoint.x + h1 * startRighttan, y: startRightPoint.y + h1, h: h1 })
+                lepts.push({ x: endLeftPoint.x + h2 * endLefttan, y: endLeftPoint.y + h2, h: h2 })
+                repts.push({ x: endRightPoint.x + h2 * endRighttan, y: endRightPoint.y + h2, h: h2 })
+            }
+
+            let globalSpts = [];
+            let globalEpts = [];
+            let dGlobalSpts = [];
+            let dGlobalEpts = [];
+
+            spts.forEach(function (elem) { globalSpts.push(PointToSkewedGlobal(elem, studPoints[i][j].point)) })
+            epts.forEach(function (elem) { globalEpts.push(PointToSkewedGlobal(elem, studPoints[i][j + 1].point)) })
+            dspts.forEach(function (elem) { dGlobalSpts.push(PointToSkewedGlobal(elem, studPoints[i][j].point)) })
+            depts.forEach(function (elem) { dGlobalEpts.push(PointToSkewedGlobal(elem, studPoints[i][j + 1].point)) })
+            dsSidePoints.push({ x: studPoints[i][j].point.girderStation, y: sideStartY + diaPhragmLayout, z: 0 })
+            deSidePoints.push({ x: studPoints[i][j + 1].point.girderStation, y: sideEndY + diaPhragmLayout, z: 0 })
+
+            let leftGlobalSpts = [];
+            let leftGlobalEpts = [];
+            let rightGlobalSpts = [];
+            let rightGlobalEpts = [];
+            lspts.forEach(function (elem) { leftGlobalSpts.push({ ...PointToSkewedGlobal(elem, studPoints[i][j].point), h: elem.h }) })
+            lepts.forEach(function (elem) { leftGlobalEpts.push({ ...PointToSkewedGlobal(elem, studPoints[i][j + 1].point), h: elem.h }) })
+            rspts.forEach(function (elem) { rightGlobalSpts.push({ ...PointToSkewedGlobal(elem, studPoints[i][j].point), h: elem.h }) })
+            repts.forEach(function (elem) { rightGlobalEpts.push({ ...PointToSkewedGlobal(elem, studPoints[i][j + 1].point), h: elem.h }) })
+
+            let sideSpt = { x: studPoints[i][j].point.girderStation, y: sideStartY, z: 0 }
+            let sideEpt = { x: studPoints[i][j + 1].point.girderStation, y: sideEndY, z: 0 }
+
+            let startOffset = studInfo.endOffset
+            let endOffset = studInfo.endOffset
+            if (skey.includes("SP")) {
+                // totalLength = 0;
+                startOffset = studInfo.spliceOffset
+            }
+            if (ekey.includes("SP")) {
+                endOffset = studInfo.spliceOffset
+            }
+            // totalLength += segLength
+            segLength = endPoint.girderStation - startPoint.girderStation
+            let remainder = (segLength - startOffset - endOffset) % studInfo.spacing;
+            let sNum = segLength - remainder > 0 ? Math.floor((segLength - startOffset - endOffset - remainder) / studInfo.spacing) + 2 : 0
+            let x = startOffset;
+            for (let k = 0; k < sNum; k++) {
+
+                if (k === sNum - 1) {
+                    x = segLength - endOffset
+                } else if (k > 0) {
+                    x = startOffset + (remainder / 2 + studInfo.spacing / 2) + (k - 1) * studInfo.spacing
+                }
+
+                for (let l = 0; l < spts.length; l++) {
+                    points.push({
+                        x: (segLength - x) / segLength * globalSpts[l].x + x / segLength * globalEpts[l].x,
+                        y: (segLength - x) / segLength * globalSpts[l].y + x / segLength * globalEpts[l].y,
+                        z: (segLength - x) / segLength * globalSpts[l].z + x / segLength * globalEpts[l].z
+                    })
+                    if (l === 0) {
+                        sidePoints.push(
+                            {
+                                x: (segLength - x) / segLength * sideSpt.x + x / segLength * sideEpt.x,
+                                y: (segLength - x) / segLength * sideSpt.y + x / segLength * sideEpt.y,
+                                z: (segLength - x) / segLength * sideSpt.z + x / segLength * sideEpt.z
+                            }
+                        )
+                    }
+
+                }
+                for (let l = 0; l < lspts.length; l++) {
+                    if ((segLength - x) / segLength * leftGlobalSpts[l].h + x / segLength * leftGlobalEpts[l].h >= 100) {
+                        leftPoints.push({
+                            x: (segLength - x) / segLength * leftGlobalSpts[l].x + x / segLength * leftGlobalEpts[l].x,
+                            y: (segLength - x) / segLength * leftGlobalSpts[l].y + x / segLength * leftGlobalEpts[l].y,
+                            z: (segLength - x) / segLength * leftGlobalSpts[l].z + x / segLength * leftGlobalEpts[l].z
+                        })
+                    }
+                    if ((segLength - x) / segLength * rightGlobalSpts[l].h + x / segLength * rightGlobalEpts[l].h >= 100) {
+                        rightPoints.push({
+                            x: (segLength - x) / segLength * rightGlobalSpts[l].x + x / segLength * rightGlobalEpts[l].x,
+                            y: (segLength - x) / segLength * rightGlobalSpts[l].y + x / segLength * rightGlobalEpts[l].y,
+                            z: (segLength - x) / segLength * rightGlobalSpts[l].z + x / segLength * rightGlobalEpts[l].z
+                        })
+                        rwSidePoints.push(
+                            {
+                                x: (segLength - x) / segLength * sideSpt.x + x / segLength * sideEpt.x,
+                                y: (segLength - x) / segLength * (sideStartY + rightGlobalSpts[l].h) + x / segLength * (sideEndY + rightGlobalEpts[l].h),
+                                z: 0
+                            }
+                        )
+                    }
+
+                }
+            }
+            sidePoints.sort(function (a, b) { return a.x > b.x ? 1 : -1 })
+
+            let groupName = "G" + studPoints[i][j].girder.toString() + "SEG" + studPoints[i][j].seg.toString() + "_" + j.toString()
+            // let partName = "G" + studPoints[i][j].girder.toString() + "S" + studPoints[i][j].span.toString()
+            if (leftPoints.length > 0) { //볼트형 스터드로 옵션
+                studList.push(
+                    new Stud(0,Math.PI / 2 + lRad, rot, leftPoints, studInfo, {bolt : true}, 'stud', {
+                        key: groupName+ "L", part: partName,
+                        girder: studPoints[i][j].girder,
+                        seg: studPoints[i][j].seg,
+                        massNum: i * 1,
+                        category: "leftWeb"
+                    })
+                )
+            }
+            if (rightPoints.length > 0) {
+                studList.push(
+                    new Stud(0,-Math.PI / 2 + rRad, rot, rightPoints, studInfo, {bolt : true}, 'stud', {
+                        key: groupName + "R", part: partName,
+                        girder: studPoints[i][j].girder,
+                        seg: studPoints[i][j].seg,
+                        massNum: i * 1,
+                        category: "rightWeb"
+                    })
+                )
+            }
+            if (!studDict[groupName]) {
+                studDict[groupName] = {}
+            }
+            if (skey.includes("D")) {
+                if (dGlobalSpts.length > 0) {
+                    studList.push(
+                    new Stud( -Math.PI / 2, 0, rot, dGlobalSpts, studInfo, {bolt : true}, 'stud', {
+                        key: groupName + "DS", part: partName,
+                        girder: studPoints[i][j].girder,
+                        seg: studPoints[i][j].seg,
+                        massNum: i * 1,
+                        category: "diaphragmStart"
+                    })
+                    )
+                }
+            }
+            if (ekey.includes("D")) {
+                if (dGlobalEpts.length > 0) {
+                    studList.push(
+                        new Stud( Math.PI / 2, 0, rot, dGlobalEpts, studInfo, {bolt : true}, 'stud', {
+                            key: groupName + "DE", part: partName,
+                            girder: studPoints[i][j].girder,
+                            seg: studPoints[i][j].seg,
+                            massNum: i * 1,
+                            category: "diaphragmEnd"
+                        })
+                        )
+                }
+            }
+            if (points.length > 0) {
+                studList.push(
+                    new Stud( 0, 0, 0, points, studInfo, {bolt : true}, 'stud', {
+                        key: groupName + "B", part: partName,
+                        girder: studPoints[i][j].girder,
+                        seg: studPoints[i][j].seg,
+                        massNum: i * 1,
+                        category: "bottomFlange"
+                    })
+                    )
+            }
+        }
+    }
+
+    return { studList, dimension, section} //, studDict }
+}
+
+export function SupportGenerator(supportFixed, supportLayout, gridPoint, sectionPointDict) {
+    let data = {};
+    let model = { parent: [], children: [] };
+    let girderHeight = 2000; //임시로 2000이라고 가정함. 추후 girderSection정보로부터 받아올수 있도록 함.
+    let fixedPoint = [];
+    let isFixed = false;
+    let angle = 0;
+    let sign = 1;
+    let type = "";
+    let name = "";
+    let point = {};
+    let width = 0;
+    let height = 0;
+    let thickness = 0;
+
+    const dof = {
+        고정단: [true, true, true, false, false, false],
+        양방향단: [false, false, true, false, false, false],
+        횡방향가동: [true, false, true, false, false, false],
+        종방향가동: [false, true, true, false, false, false],
+    };
+    let fixedCoord = { x: 0, y: 0, z: 0 };
+    // 고정단기준이 체크되지 않거나, 고정단이 없을 경우에는 접선방향으로 받침을 계산함
+    if (supportFixed) {
+        fixedPoint = supportLayout.filter(function (value) {
+            return value[1] == "고정단";
+        });
+    }
+
+    if (fixedPoint.length > 0) {
+        isFixed = true;
+        let fixed = gridPoint[fixedPoint[0][0]];
+        girderHeight = -sectionPointDict[fixedPoint[0][0]].forward.lflangeSide[1];
+        let skew = (fixed.skew * Math.PI) / 180;
+        let offset = fixedPoint[0][2];
+        fixedCoord = {
+            x: fixed.x - (Math.cos(skew) * -1 * fixed.normalSin - Math.sin(skew) * fixed.normalCos) * offset,
+            y: fixed.y - (Math.sin(skew) * -1 * fixed.normalSin + Math.cos(skew) * fixed.normalCos) * offset,
+            z: fixed.z - girderHeight,
+        };
+    }
+
+    for (let index in supportLayout) {
+        let name0 = supportLayout[index][0]; //.point
+        name = name0.includes("L") || name0.includes("R") ? name0.slice(0, -1) : name0;
+        type = supportLayout[index][1]; //.type
+        width = supportLayout[index][3];
+        height = supportLayout[index][4];
+        thickness = supportLayout[index][5];
+
+        let offset = 0;
+        supportLayout[index][2]; //.offset
+        point = gridPoint[name];
+        if (name0.includes("L")) {
+            let p1 = sectionPointDict[name].forward.lflange[0][2];
+            let p2 = sectionPointDict[name].forward.lflange[0][3];
+            offset = supportLayout[index][2] + (p1.x + p2.x) / 2;
+            girderHeight = -(p1.y + p2.y) / 2;
+        } else if (name0.includes("R")) {
+            let p1 = sectionPointDict[name].forward.lflange[1][2];
+            let p2 = sectionPointDict[name].forward.lflange[1][3];
+            offset = supportLayout[index][2] + (p1.x + p2.x) / 2;
+            girderHeight = -(p1.y + p2.y) / 2;
+        } else {
+            offset = supportLayout[index][2];
+            girderHeight = -sectionPointDict[name].forward.lflangeSide[1];
+        }
+
+        let skew = (point.skew * Math.PI) / 180;
+        let newPoint = {
+            x: point.x - (Math.cos(skew) * -1 * point.normalSin - Math.sin(skew) * point.normalCos) * offset,
+            y: point.y - (Math.sin(skew) * -1 * point.normalSin + Math.cos(skew) * point.normalCos) * offset,
+            z: point.z - girderHeight,
+            offset: point.offset + offset,
+        };
+        if (isFixed && name !== fixedPoint[0][0]) {
+            if (name.slice(2) === fixedPoint[0][0].slice(2)) {
+                angle = Math.atan2(newPoint.y - fixedCoord.y, newPoint.x - fixedCoord.x) + Math.PI / 2;
+            } else {
+                angle = Math.atan2(newPoint.y - fixedCoord.y, newPoint.x - fixedCoord.x);
+            }
+        } else {
+            sign = point.normalCos >= 0 ? 1 : -1;
+            angle = sign * Math.acos(-point.normalSin);
+        }
+        data[index] = {
+            angle: angle > Math.PI / 2 ? angle - Math.PI : angle < -Math.PI / 2 ? angle + Math.PI : angle,
+            point: newPoint,
+            basePointName: name0,
+            key: "SPPT" + index,
+            type: dof[type], //[x,y,z,rx,ry,rz]
+            solePlateThck: thickness,
+        };
+
+        let pointAng = Math.atan2(point.normalCos, -point.normalSin);
+        let dA = data[index].angle - pointAng;
+        let cos = Math.cos(dA);
+        let sin = Math.sin(dA);
+        let tan = point.gradientX;
+        let points1 = [
+            { x: (-cos * width) / 2 - (sin * height) / 2, y: (-sin * width) / 2 + (cos * height) / 2, z: -thickness },
+            { x: (-cos * width) / 2 + (sin * height) / 2, y: (-sin * width) / 2 - (cos * height) / 2, z: -thickness },
+            { x: (cos * width) / 2 + (sin * height) / 2, y: (sin * width) / 2 - (cos * height) / 2, z: -thickness },
+            { x: (cos * width) / 2 - (sin * height) / 2, y: (sin * width) / 2 + (cos * height) / 2, z: -thickness },
+        ];
+        let points2 = [];
+        points1.forEach(point => points2.push({ x: point.x, y: point.y, z: point.z + thickness + point.x * tan }));
+        let newPoints = [[], []];
+        let nCos = Math.cos(pointAng);
+        let nSin = Math.sin(pointAng);
+        points1.forEach(pt1 =>
+            newPoints[1].push({
+                x: newPoint.x + pt1.x * nCos - pt1.y * nSin,
+                y: newPoint.y + pt1.x * nSin + pt1.y * nCos,
+                z: newPoint.z + pt1.z,
+            })
+        );
+        points2.forEach(pt2 =>
+            newPoints[0].push({
+                x: newPoint.x + pt2.x * nCos - pt2.y * nSin,
+                y: newPoint.y + pt2.x * nSin + pt2.y * nCos,
+                z: newPoint.z + pt2.z,
+            })
+        );
+        // if (!model[name]){
+        //     model[name]={}
+        // }
+        // model[name]["solePlate" + index] = { type: "loft", points: newPoints } //곡선의 경우 솔플레이트 각도가 90도 회전되어 있음. 원인 파악 및 오류수정 필요 by drlim 20201024
+        model["children"].push(
+            new Loft(newPoints, true, "support", { key: "SPPT" + index, part: name })
+            );
+    }
+    return { data, model };
 }

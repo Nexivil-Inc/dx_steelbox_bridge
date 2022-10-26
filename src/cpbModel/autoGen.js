@@ -691,9 +691,9 @@ export function GridInputFitting(gridInput){
 
   export function EtcPartAuto(girderStation, sectionPointDict) {
 
-    let jackupLayout //= JackupAutoGen(girderStation, sectionPointDict)
-    let studLayout // = StudAutoGen(girderStation, sectionPointDict)
-    let supportLayout //= SupportAutoGen(girderStation, sectionPointDict)
+    let jackupLayout = JackupAutoGen(girderStation, sectionPointDict)
+    let studLayout = StudAutoGen(girderStation, sectionPointDict)
+    let supportLayout = SupportAutoGen(girderStation, sectionPointDict)
     let hStiffLayout = hStiffnerAutoGen(girderStation, sectionPointDict)
     return { jackupLayout, studLayout, supportLayout, hStiffLayout }
 }
@@ -773,6 +773,145 @@ function hStiffnerAutoGen(girderStation, sectionPointDict) {
                         break
                     }
                 }
+            }
+        }
+    }
+    return result
+}
+
+
+function JackupAutoGen(girderStation, sectionPointDict,) {
+    let result = [];
+    let both = true;
+    let layout1 = "";
+    let layout2 = "";
+    let height = 0;
+    let thickness1 = 0;
+    let thickness2 = 0;
+    let length1 = 0;
+    let length2 = 0;
+    let supportNum = 0
+    for (let j in girderStation[0]) {
+        if (girderStation[0][j].key.includes("S") && !girderStation[0][j].key.includes("SP")) {
+            supportNum += 1;
+        }
+    }
+    for (let i in girderStation) {
+        let key = ""
+        let isStart = true;
+        for (let j in girderStation[i]) {
+            if (girderStation[i][j].key.includes("S") && !girderStation[i][j].key.includes("SP")) {
+                key = girderStation[i][j].key;
+                let isSeparated = sectionPointDict[key].forward.input.isSeparated
+                if (isSeparated) {
+                    if (isStart) {
+                        layout1 = "400,600"
+                        isStart = false
+                    } else {
+                        layout1 = "-400,-600"
+                    }
+                    layout2 = "-200,200"
+                    height = 150
+                    thickness1 = 20;
+                    thickness2 = 26
+                    length1 = 400;
+                    length2 = 300;
+                    // result.push({ position: key, layout: layout1, length: length1, height: height, thickness: thickness1, chamfer: height - 10, both: both })
+                    // result.push({ position: key, layout: layout2, length: length2, height: height, thickness: thickness2, chamfer: height - 10, both: both })
+                    result.push([key, layout1, length1, height, thickness1, height - 10, both])
+                    result.push([key, layout2, length2, height, thickness2, height - 10, both])
+                } else {
+                    if (key.includes("S1")){
+                        layout1 = "400,550,700";
+                    } else if (key.includes("S" + supportNum.toFixed(0))){
+                        layout1 = "-700,-550,-400";
+                    } else {
+                        layout1 = "-700,-550,-400,400,550,700";
+                    }
+                    height = 100
+                    length1 = 900
+                    thickness1 = 22;
+                    // result.push({ position: key, layout: layout1, length: length1, height: height, thickness: thickness1, chamfer: height - 10, both: both })
+                    result.push([key, layout1, length1, height, thickness1, height - 10, both])
+                }
+
+            }
+        }
+    }
+    return result
+}
+
+function StudAutoGen(girderStation, sectionPointDict,) {
+    let result = [];
+    let spacing = 400;
+    for (let i = 0; i < girderStation.length; i++) {
+        let startKey = "G" + (i + 1).toFixed(0) + "K1"
+        let endKey = ""
+        let startOffset = 200;
+        let endOffset = 350;
+        for (let j in girderStation[i]) {
+            if (girderStation[i][j].key.includes("TW") || girderStation[i][j].key.includes("K6") || girderStation[i][j].key.includes("SP")) {
+                endKey = girderStation[i][j].key;
+                let w = sectionPointDict[endKey].backward.input.wuf;
+                let isSeparated = sectionPointDict[endKey].backward.input.isSeparated
+
+                startOffset = startKey.includes("SP") ? 350 : 200;
+                endOffset = endKey.includes("SP") ? 350 : 200;
+                let layout = isSeparated ? "auto" : "auto"; //플랜지 중앙점을 기준으로 배치하는게 더 직관적일 듯함.
+                // result.push({ start: startKey, end: endKey, startOffset: startOffset, endOffset: endOffset, spacing: spacing, layout: layout })
+                result.push([startKey, endKey, startOffset, endOffset, spacing, layout])
+                startKey = endKey;
+            }
+        }
+    }
+    return result
+}
+
+function SupportAutoGen(girderStation, sectionPointDict,) {
+    let result = [];
+    let offset = 0;
+    let solePlate1 = [300, 300, 26] //[폭,너비,높이]
+    let solePlate2 = [750, 750, 26] //[폭,너비,높이]
+    let type1 = "";
+    let supportKeyList = [];
+    for (let i in girderStation) {
+        supportKeyList.push([])
+        for (let j in girderStation[i]) {
+            if (girderStation[i][j].key.includes("S") && !girderStation[i][j].key.includes("SP")) {
+                supportKeyList[i].push(girderStation[i][j].key)
+            }
+        }
+    }
+    let supportNum = supportKeyList[0].length
+    let key = ""
+    let girderNum = supportKeyList.length
+
+    let fixedIndex = [Math.floor((girderNum - 1) / 2), Math.floor((supportNum - 1) / 2)]
+    for (let i = 0; i < supportKeyList.length; i++) {
+        for (let j = 0; j < supportNum; j++) {
+            key = supportKeyList[i][j];
+            let isSeparated = sectionPointDict[key].forward.input.isSeparated
+            if (i === fixedIndex[0]) {
+                if (j === fixedIndex[1]) {
+                    type1 = "고정단"
+                } else {
+                    type1 = "종방향가동"
+                }
+            } else {
+                if (j === fixedIndex[1]) {
+                    type1 = "횡방향가동"
+                } else {
+                    type1 = "양방향단"
+                }
+            }
+            if (isSeparated) {
+                // result.push({ point: key + "L", type: type1, offset: offset, width: solePlate1[0], height: solePlate1[1], thickness: solePlate1[2] })
+                // result.push({ point: key + "R", type: type1, offset: offset, width: solePlate1[0], height: solePlate1[1], thickness: solePlate1[2] })
+                result.push([key + "L", type1, offset, solePlate1[0], solePlate1[1], solePlate1[2] ])
+                result.push([key + "R", type1, offset, solePlate1[0], solePlate1[1], solePlate1[2] ])
+            } else {
+                // result.push({ point: key, type: type1, offset: offset, width: solePlate2[0], height: solePlate2[1], thickness: solePlate2[2] })
+                result.push([key, type1, offset, solePlate2[0], solePlate2[1], solePlate2[2]])
             }
         }
     }
