@@ -2361,7 +2361,7 @@ export function IbeamJointV2(webPoints, centerPoint, xs, wBolt, fBolt) {
     //   t:14,
     // }
     let result = {};
-    let material = "steelBox";
+    let plateMaterial = "steelBox";
     let boltMaterial = "stud";
     const rotationY = centerPoint.skew
     let uGradient = (webPoints[3].y - webPoints[2].y) / (webPoints[3].x - webPoints[2].x);
@@ -2388,12 +2388,12 @@ export function IbeamJointV2(webPoints, centerPoint, xs, wBolt, fBolt) {
     result["webJoint1"] = new Extrude(
         webJoint1, xs.webJointThickness,
         {refPoint : webPoint1, dz : xs.webThickness / 2},
-        material, {}
+        plateMaterial, {}
     )
     result["webJoint2"] = new Extrude(
         webJoint1, xs.webJointThickness,
         {refPoint : webPoint1, dz : - xs.webJointThickness - xs.webThickness / 2},
-        material, {}
+        plateMaterial, {}
     )
     result["webBolt1"] = new Bolt(
         BoltLayout(wBolt.G, wBolt.P, "Y", webJoint1),
@@ -2402,12 +2402,12 @@ export function IbeamJointV2(webPoints, centerPoint, xs, wBolt, fBolt) {
     result["webJoint3"] = new Extrude(
         webJoint1, xs.webJointThickness,
         {refPoint : webPoint2, dz : xs.webThickness / 2},
-        material, {}
+        plateMaterial, {}
     )
     result["webJoint3"] = new Extrude(
         webJoint1, xs.webJointThickness,
         {refPoint : webPoint2, dz : - xs.webJointThickness - xs.webThickness / 2},
-        material, {}
+        plateMaterial, {}
     )
     result["webBolt2"] = new Bolt(
         BoltLayout(wBolt.G, wBolt.P, "Y", webJoint1),
@@ -2439,17 +2439,17 @@ export function IbeamJointV2(webPoints, centerPoint, xs, wBolt, fBolt) {
     result["upperJoint1"] = new Extrude(
         joint1, xs.webJointThickness,
         {refPoint : uPoint1, dz : xs.flangeThickness},
-        material, {}
+        plateMaterial, {}
     )
     result["upperJoint2"] = new Extrude(
         joint2, xs.webJointThickness,
         {refPoint : uPoint1, dz : - xs.flangeJointThickness},
-        material, {}
+        plateMaterial, {}
     )
     result["upperJoint3"] = new Extrude(
         joint3, xs.webJointThickness,
         {refPoint : uPoint1, dz : - xs.flangeJointThickness},
-        material, {}
+        plateMaterial, {}
     )
     result["upperJointBolt1"] = new Bolt(
         [...BoltLayout(fBolt.G, fBolt.P, "y", joint2, centerPoint.skew), ...BoltLayout(fBolt.G, fBolt.P, "y", joint3, centerPoint.skew)],
@@ -2458,17 +2458,17 @@ export function IbeamJointV2(webPoints, centerPoint, xs, wBolt, fBolt) {
     result["upperJoint11"] = new Extrude(
         joint1, xs.webJointThickness,
         {refPoint : uPoint2, dz : xs.flangeThickness},
-        material, {}
+        plateMaterial, {}
     )
     result["upperJoint22"] = new Extrude(
         joint2, xs.webJointThickness,
         {refPoint : uPoint2, dz : - xs.flangeJointThickness},
-        material, {}
+        plateMaterial, {}
     )
     result["upperJoint33"] = new Extrude(
         joint3, xs.webJointThickness,
         {refPoint : uPoint2, dz : - xs.flangeJointThickness},
-        material, {}
+        plateMaterial, {}
     )
     result["upperJointBolt11"] = new Bolt(
         [...BoltLayout(fBolt.G, fBolt.P, "y", joint2, centerPoint.skew), ...BoltLayout(fBolt.G, fBolt.P, "y", joint3, centerPoint.skew)],
@@ -2480,17 +2480,17 @@ export function IbeamJointV2(webPoints, centerPoint, xs, wBolt, fBolt) {
     result["lowerJoint1"] = new Extrude(
         joint1, xs.webJointThickness,
         {refPoint : lPoint1, dz : - xs.flangeThickness - xs.flangeJointThickness},
-        material, {}
+        plateMaterial, {}
     )
     result["lowerJoint2"] = new Extrude(
         joint2, xs.webJointThickness,
         {refPoint : lPoint1, dz : 0},
-        material, {}
+        plateMaterial, {}
     )
     result["lowerJoint3"] = new Extrude(
         joint3, xs.webJointThickness,
         {refPoint : lPoint1, dz : 0},
-        material, {}
+        plateMaterial, {}
     )
     result["lowerJointBolt1"] = new Bolt(
         [...BoltLayout(fBolt.G, fBolt.P, "y", joint2, centerPoint.skew), ...BoltLayout(fBolt.G, fBolt.P, "y", joint3, centerPoint.skew)],
@@ -2499,17 +2499,17 @@ export function IbeamJointV2(webPoints, centerPoint, xs, wBolt, fBolt) {
     result["lowerJoint11"] = new Extrude(
         joint1, xs.webJointThickness,
         {refPoint : lPoint2, dz : - xs.flangeThickness - xs.flangeJointThickness},
-        material, {}
+        plateMaterial, {}
     )
     result["lowerJoint22"] = new Extrude(
         joint2, xs.webJointThickness,
         {refPoint : lPoint2, dz : 0},
-        material, {}
+        plateMaterial, {}
     )
     result["lowerJoint33"] = new Extrude(
         joint3, xs.webJointThickness,
         {refPoint : lPoint2, dz : 0},
-        material, {}
+        plateMaterial, {}
     )
     result["lowerJointBolt11"] = new Bolt(
         [...BoltLayout(fBolt.G, fBolt.P, "y", joint2, centerPoint.skew), ...BoltLayout(fBolt.G, fBolt.P, "y", joint3, centerPoint.skew)],

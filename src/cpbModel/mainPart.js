@@ -2,13 +2,15 @@ import { GetArcPoints, Loft, PointToSkewedGlobal, TwoLineIntersect } from "@nexi
 import { DividingPoint } from "@nexivil/package-modules/src/temp";
 import { FilletPoints, SteelBox } from "./3D";
 import { DiaShapeDictV2, VstiffShapeDictV2, XbeamDictV2 } from "./diaVstiffXbeam";
+import { SplicePlateV2 } from "./etcPart";
 
 export function CPBMainPart(stPointDict, girderStation, sectionPointDict, MainPartInput, MainPartSectionInput, entrance) {
     let stboxModel = SteelBoxModel(girderStation, sectionPointDict, entrance)
     let diaModel = DiaShapeDictV2(stPointDict, sectionPointDict, MainPartInput.point.D, MainPartSectionInput.dia, null)
     let vModel = VstiffShapeDictV2(stPointDict, sectionPointDict, MainPartInput.point.V, MainPartSectionInput.vStiff, null)
     let xbeamModel = XbeamDictV2(stPointDict, sectionPointDict, MainPartInput.xbeamLayout, MainPartSectionInput.xBeam, null)
-    return [...stboxModel['children'], ...diaModel.diaDict['children'], ...vModel['children'],...xbeamModel.xbeamDict['children']]
+    let spliceModel = SplicePlateV2(stPointDict, sectionPointDict, MainPartInput.point.SP, MainPartSectionInput.splice)
+    return [...stboxModel['children'], ...diaModel.diaDict['children'], ...vModel['children'],...xbeamModel.xbeamDict['children'], ...spliceModel['children']]
 }
 
 export function SteelBoxModel(girderStation, sectionPointDict, entrance) {

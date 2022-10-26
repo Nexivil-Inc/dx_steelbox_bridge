@@ -1,5 +1,6 @@
-import { GridInputAutoGen, GridInputFitting} from "./autoGen";
+import { EtcPartAuto, GridInputAutoGen, GridInputFitting} from "./autoGen";
 import { SectionPointDictFn, StationListFn, StGenerator } from "./context";
+import { CPBEtcPart } from "./etcPart";
 import { CPBMainPart } from "./mainPart";
 
 export function MainPartDefaultDataAutoGen() {
@@ -17,6 +18,19 @@ export function MainPartDefaultDataAutoGen() {
       this.setOutputData(0, result);
     }
   }
+
+  export function EscPartDefaultDataAutoGen() {
+    this.addInput("girderStation", "");
+    this.addInput("sectionPointDict", "object");
+    this.addInput("option", "string");
+    this.addOutput("EscPartInput", "object");
+  }
+  EscPartDefaultDataAutoGen.prototype.onExecute = function () {
+      const result = EtcPartAuto(this.getInputData(0), this.getInputData(1));
+      this.setOutputData(0, result);
+    
+  }
+
 
   export function MainPartInputFit() {
     this.addInput("MainPartInput", "object");
@@ -90,3 +104,17 @@ export function MainPartDefaultDataAutoGen() {
     const result = CPBMainPart(this.getInputData(0), this.getInputData(1), this.getInputData(2), this.getInputData(3), this.getInputData(4), this.getInputData(5))
     this.setOutputData(0, result)
   }
+
+  export function GenETCPartModel(){
+    this.addInput("stPointDict","object");
+    this.addInput("girderStation",0);
+    this.addInput("sectionPointDict","object");
+    this.addInput("ETCPartInput","object");
+    this.addOutput("mainPartModel","object");
+  }
+  GenETCPartModel.prototype.onExecute = function() {
+    const result = CPBEtcPart(this.getInputData(0), this.getInputData(1), this.getInputData(2), this.getInputData(3))
+    this.setOutputData(0, result)
+  }
+
+  

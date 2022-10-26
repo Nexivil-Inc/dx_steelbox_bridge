@@ -688,3 +688,93 @@ export function GridInputFitting(gridInput){
     }
     return gridInput2
   }
+
+  export function EtcPartAuto(girderStation, sectionPointDict) {
+
+    let jackupLayout //= JackupAutoGen(girderStation, sectionPointDict)
+    let studLayout // = StudAutoGen(girderStation, sectionPointDict)
+    let supportLayout //= SupportAutoGen(girderStation, sectionPointDict)
+    let hStiffLayout = hStiffnerAutoGen(girderStation, sectionPointDict)
+    return { jackupLayout, studLayout, supportLayout, hStiffLayout }
+}
+
+function hStiffnerAutoGen(girderStation, sectionPointDict) {
+    let result = [];
+    let width = 180
+    let chamfer = width - 10;
+    let thickness = 16
+    let offset1 = 400;
+    let offset2 = 400;
+    let startMargin = 42;
+    let endMargin = 42;
+    let supportStationList = [];
+    for (let i in girderStation) {
+        supportStationList.push([])
+        for (let j in girderStation[i]) {
+            if (girderStation[i][j].key.includes("S") && !girderStation[i][j].key.includes("SP")) {
+                supportStationList[i].push(girderStation[i][j].point.girderStation)
+            }
+        }
+    }
+    let tensionRegion = []; // 인장기준 0.2~0.8
+    let compressRegion = []; // 압축기준 -0.4 ~ 0.4
+    for (let i in supportStationList) {
+        tensionRegion.push([]);
+        compressRegion.push([]);
+        for (let j = 0; j < supportStationList[i].length - 1; j++) {
+            let length = supportStationList[i][j + 1] - supportStationList[i][j]
+            if (j === 0) {
+                tensionRegion[i].push([0, supportStationList[i][j + 1] - 0.2 * length])
+            } else if (j === supportStationList[i].length - 2) {
+                tensionRegion[i].push([supportStationList[i][j] + 0.2 * length, supportStationList[i][j + 1]])
+            } else {
+                tensionRegion[i].push([supportStationList[i][j] + 0.2 * length, supportStationList[i][j + 1] - 0.2 * length])
+            }
+            if (j > 0) {
+                compressRegion[i].push([supportStationList[i][j] - 0.4 * length, supportStationList[i][j] + 0.4 * length])
+            }
+        }
+    }
+    for (let i in girderStation) {
+        for (let j = 0; j < girderStation[i].length - 1; j++) {
+            let key1 = girderStation[i][j].key
+            let bool1 = ["SP", "K1", "K6", "D", "V"].some(el => key1.includes(el))
+            if (bool1) {
+                let pt1 = girderStation[i][j].point
+                for (let k = j + 1; k < girderStation[i].length; k++) {
+                    let key2 = girderStation[i][k].key
+                    let pt2 = girderStation[i][k].point
+                    let bool2 = ["SP", "K1", "K6", "D", "V"].some(el => key2.includes(el))
+                    if ((pt2.girderStation - pt1.girderStation) > width * 2 && bool2) {
+                        let station = (pt2.girderStation + pt1.girderStation) / 2;
+                        let startOff = key1.includes("SP") ? 600 / 2 + 30 : startMargin
+                        let endOff = key2.includes("SP") ? 600 / 2 + 30 : endMargin
+                        for (let t in tensionRegion[i]) {
+                            if (station >= tensionRegion[i][t][0] && station <= tensionRegion[i][t][1]) {
+                                // result.push({ from, to, startOffset: endOffset, width, thickness, chamfer, isTop, offset})
+                                result.push([key1, key2, startOff, endOff, width, thickness, chamfer, true, offset1, offset2])
+                                break;
+                            }
+                        }
+                        for (let t in compressRegion[i]) {
+                            if (station >= compressRegion[i][t][0] && station <= compressRegion[i][t][1]) {
+                                // result.push({ from, to, startOffset: endOffset, width, thickness, chamfer, isTop, offset})
+                                let cOffset1 = offset1
+                                let cOffset2 = offset2
+                                if (sectionPointDict[key1].forward.input.Tcl > 0) {
+                                    cOffset1 = sectionPointDict[key1].forward.input.Tcl + 200
+                                    cOffset2 = sectionPointDict[key2].backward.input.Tcl + 200
+                                }
+                                result.push([key1, key2, startOff, endOff, width, thickness, chamfer, false, cOffset1, cOffset2])
+                                break;
+                            }
+                        }
+                        j = k - 1
+                        break
+                    }
+                }
+            }
+        }
+    }
+    return result
+}
