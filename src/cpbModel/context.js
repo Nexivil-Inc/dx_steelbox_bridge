@@ -116,7 +116,7 @@ export function StGenerator(girderLayout, girderBaseInfo, gridInput) {
         i++
       } else if (st > k4st  && st < k7st) {
 
-        nameToPointDict["CRN" + i] = StPointToParallel(nameToPointDict["CRK7"], st - k0st, alignment)
+        nameToPointDict["CRN" + i] = StPointToParallel(nameToPointDict["CRK7"], st - k7st, alignment)
         i++
       } else if (st > k3st  && st < k4st){  
         nameToPointDict["CRN" + i] = {...point, skew: 0} 
