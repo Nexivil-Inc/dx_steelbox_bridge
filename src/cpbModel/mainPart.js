@@ -4,8 +4,8 @@ import { FilletPoints, SteelBox } from "./3D";
 import { DiaShapeDictV2, VstiffShapeDictV2, XbeamDictV2 } from "./diaVstiffXbeam";
 import { SplicePlateV2 } from "./etcPart";
 
-export function CPBMainPart(stPointDict, girderStation, sectionPointDict, MainPartInput, MainPartSectionInput, entrance) {
-    let stboxModel = SteelBoxModel(girderStation, sectionPointDict, entrance)
+export function CPBMainPart(stPointDict, girderStation, sectionPointDict, MainPartInput, MainPartSectionInput, entrance, crossKeys) {
+    let stboxModel = SteelBoxModel(girderStation, sectionPointDict, entrance, crossKeys)
     let diaModel = DiaShapeDictV2(stPointDict, sectionPointDict, MainPartInput.point.D, MainPartSectionInput.dia, null)
     let vModel = VstiffShapeDictV2(stPointDict, sectionPointDict, MainPartInput.point.V, MainPartSectionInput.vStiff, null)
     let xbeamModel = XbeamDictV2(stPointDict, sectionPointDict, MainPartInput.xbeamLayout, MainPartSectionInput.xBeam, null)
@@ -13,7 +13,7 @@ export function CPBMainPart(stPointDict, girderStation, sectionPointDict, MainPa
     return [...stboxModel['children'], ...diaModel.diaDict['children'], ...vModel['children'],...xbeamModel.xbeamDict['children'], ...spliceModel['children']]
 }
 
-export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
+export function SteelBoxModel(girderStation, sectionPointDict, entrance, crossKeys) {
     let bottomConcDict = {};
     let result = { parent: [], children: [] }
     let pk1 = "";
@@ -21,22 +21,15 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
     let UFi = 1;
     let Bi = 1;
     let Wi = 1;
-    // let RWi = 1;
     let lRibi = 1;
     let uRibi = 1;
     let lConci = 1;
-    // let lConcSidei = 1;
-  
     let keyname = "";
     let splicer = [];
-    // let sideKeyname = "";
     let endCutFilletR = 200;
-  
     for (let i in girderStation) {
       let segNum = 1
       let segName = "G" + (i * 1 + 1).toFixed(0) + "SEG" + segNum.toString()
-      let topPoints = [[], [], []];
-      let bottomPoints = [[], [], []];
       let leftWebPoints = [[], [], []];
       let rightWebPoints = [[], [], []];
       let topRibPoints = [];
@@ -45,38 +38,26 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
       let bottomConcGridPoints = [];
       let uflangePointList = [];
       let lflangePointList = [];
-      // steelBoxDict2[segName] = {};
       for (let j = 0; j < girderStation[i].length - 1; j++) {
         let point1 = girderStation[i][j].point;
         let point2 = girderStation[i][j + 1].point;
-        pk1 = girderStation[i][j].key
-        pk2 = girderStation[i][j + 1].key
-  
-        if (pk1.includes("SP")) {
-          segNum += 1
-          segName = "G" + (i * 1 + 1).toFixed(0) + "SEG" + segNum.toString()
-          // steelBoxDict2[segName] = {};
+        pk1 = girderStation[i][j].key;
+        pk2 = girderStation[i][j + 1].key;
+          if (pk1.includes("SP")) {
+          segNum += 1;
+          segName = "G" + (i * 1 + 1).toFixed(0) + "SEG" + segNum.toString();
         }
-        let L1 = []; //sectionPointDict[pk1].forward.leftTopPlate
-        let L2 = []; //sectionPointDict[pk2].backward.leftTopPlate
-        let L3 = []; //sectionPointDict[pk2].forward.leftTopPlate
-        let L1S = []; //sectionPointDict[pk1].forward.leftTopPlate
-        let L2S = []; //sectionPointDict[pk2].backward.leftTopPlate
-        let L3S = []; //sectionPointDict[pk2].backward.leftTopPlate
-  
-        keyname = "G" + (i * 1 + 1).toString() + "TopPlate" + UFi
+         keyname = "G" + (i * 1 + 1).toString() + "TopPlate" + UFi
         splicer = ["TF", "SP", "K6"]
-        let uflangePoint = steelPlateGenerator(sectionPointDict, pk1, pk2, point1, point2, "uflange", splicer, endCutFilletR)
+        let uflangePoint = steelPlateGenerator(sectionPointDict, pk1, pk2, point1, point2, "uflange", splicer, endCutFilletR, crossKeys)
         uflangePointList.push(uflangePoint)
 
         splicer.forEach(function (sp) {
-          if (pk2.slice(2, 4) === sp) { //거대 개수 9개 제한 
+          if (pk2.slice(2, 4) === sp) { //거더 개수 9개 제한 
             result["children"].push(new SteelBox(GirderPoints(uflangePointList), sectionPointDict[pk1].forward.input.tuf, null, 'steelBox', 
             {group: 'Girder' + String(i*1+1), part: segName, key: keyname, girder: i * 1 + 1, seg: segNum, }))
-                
             UFi += 1;
             //initiallize
-            topPoints = [[], [], []];
             uflangePointList = [];
             return
           }
@@ -84,29 +65,27 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
   
         keyname = "G" + (i * 1 + 1).toString() + "BottomPlate" + Bi
         splicer = ["BF", "SP", "K6"]
-        let lflangePoint = steelPlateGenerator(sectionPointDict, pk1, pk2, point1, point2, "lflange", splicer, endCutFilletR)
+        let lflangePoint = steelPlateGenerator(sectionPointDict, pk1, pk2, point1, point2, "lflange", splicer, endCutFilletR, crossKeys)
         lflangePointList.push(lflangePoint)
-
         splicer.forEach(function (sp) {
           if (pk2.slice(2, 4) === sp) {
             result["children"].push(new SteelBox(GirderPoints(lflangePointList), sectionPointDict[pk1].forward.input.tlf, null, 'steelBox', 
             {group: 'Girder' + String(i*1+1), part: segName, key: keyname, girder: i * 1 + 1, seg: segNum, }))
 
             Bi += 1;
-            bottomPoints = [[], [], []];
             lflangePointList = [];
             return
           }
         })
         splicer = ["WF", "SP", "K6"];
-        let leftwebPlate = webPlateGenerator(sectionPointDict, pk1, pk2, point1, point2, 0, splicer, endCutFilletR, entrance);
-        let rightwebPlate = webPlateGenerator(sectionPointDict, pk1, pk2, point1, point2, 1, splicer, endCutFilletR, entrance);
+        let leftwebPlate = webPlateGenerator(sectionPointDict, pk1, pk2, point1, point2, 0, splicer, endCutFilletR, entrance, crossKeys);
+        let rightwebPlate = webPlateGenerator(sectionPointDict, pk1, pk2, point1, point2, 1, splicer, endCutFilletR, entrance, crossKeys);
+
         leftwebPlate.forEach((el, i) => leftWebPoints[i].push(...el));
         rightwebPlate.forEach((el, i) => rightWebPoints[i].push(...el));
-        // webSide.forEach((el, i) => rightWebSidePoints[i].push(...el));
+
         splicer.forEach(function (sp) {
           if (pk2.slice(2, 4) === sp) {
-
             result["children"].push(new SteelBox(leftWebPoints, sectionPointDict[pk1].forward.input.tw, null, 'steelBox', 
             {group: 'Girder' + String(i*1+1), part: segName, key: "G" + (i * 1 + 1).toString() + "LeftWeB" + Wi, girder: i * 1 + 1, seg: segNum, }))
             result["children"].push(new SteelBox(rightWebPoints, sectionPointDict[pk1].forward.input.tw, null, 'steelBox', 
@@ -115,11 +94,14 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
             Wi += 1;
             leftWebPoints = [[], [], []];
             rightWebPoints = [[], [], []];
-            // rightWebSidePoints = [[], [], []];
             return
           }
         })
   
+        let L1 = []; //sectionPointDict[pk1].forward.leftTopPlate
+        let L2 = []; //sectionPointDict[pk2].backward.leftTopPlate
+        let L3 = []; //sectionPointDict[pk2].forward.leftTopPlate
+
         if (point1.girderStation < point2.girderStation) {
           keyname = "G" + (i * 1 + 1).toString() + "lRib" + lRibi
           L1 = sectionPointDict[pk1].forward.LRib;
@@ -129,12 +111,14 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
             L1.forEach(elem => bottomRibPoints.push([]))
           }
           if (L1.length > 0) {
-            for (let k in L1) {
-              L1[k].forEach(element => bottomRibPoints[k].push(PointToSkewedGlobal(element, point1)));
+            if(!crossKeys.includes(pk1)){
+              for (let k in L1) {
+                  bottomRibPoints[k].push(...PointToSkewedGlobal(L1[k], point1));
+              }
             }
-            if ((L2.length > 0 && L3.length !== L2.length) || pk2.slice(2, 4) === "SP" || pk2.slice(2, 4) === "K6") {
+            if ((L2.length > 0 && L3.length !== L2.length) || pk2.includes("SP") || pk2.includes("K6")) {
               for (let k in L2) {
-                L2[k].forEach(element => bottomRibPoints[k].push(PointToSkewedGlobal(element, point2)));
+                bottomRibPoints[k].push(...PointToSkewedGlobal(L2[k], point2));
               }
               result["children"].push(new SteelBox(bottomRibPoints, sectionPointDict[pk1].forward.input.Lrib.thickness, null, 'steelBox', 
               {group: 'Girder' + String(i*1+1), part: segName, key: "G" + (i * 1 + 1).toString() + "lRib" + lRibi, girder: i * 1 + 1, seg: segNum, }))
@@ -152,8 +136,10 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
             L1.forEach(elem => topRibPoints.push([]))
           };
           if (L1.length > 0) {
-            for (let k in L1) {
-              L1[k].forEach(element => topRibPoints[k].push(PointToSkewedGlobal(element, point1)));
+            if(!crossKeys.includes(pk1)){
+              for (let k in L1) {
+                L1[k].forEach(element => topRibPoints[k].push(PointToSkewedGlobal(element, point1)));
+              }
             }
             if ((L2.length > 0 && L3.length !== L2.length) || pk2.slice(2, 4) === "SP" || pk2.slice(2, 4) === "K6") {
               for (let k in L2) {
@@ -168,23 +154,20 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
         }
         // }
         //하부콘크리트 모델
-  
+        if (point1.girderStation < point2.girderStation) {
         keyname = "G" + (i * 1 + 1).toString() + "lConc" + lConci
         // if (!steelBoxDict[keyname]) { steelBoxDict[keyname] = { points: [[], [], []] }; };
         L1 = sectionPointDict[pk1].forward.lConc;
         L2 = sectionPointDict[pk2].backward.lConc;
         L3 = sectionPointDict[pk2].forward.lConc;
-        L1S = sectionPointDict[pk1].forward.lConcSide;
-        L2S = sectionPointDict[pk2].backward.lConcSide;
-        L3S = sectionPointDict[pk2].forward.lConcSide;
   
         if (!bottomConcDict[keyname] && L1.length > 0) {
           bottomConcDict[keyname] = [];
         }
         if (L1.length > 0) {
-          let L1Global = []
-          L1.forEach(element => L1Global.push(PointToSkewedGlobal(element, point1)));
-          bottomConcPoints.push(L1Global)
+          // let L1Global = L1.map(pt=>PointToSkewedGlobal(pt, point1))
+          // L1.forEach(element => L1Global.push(PointToSkewedGlobal(element, point1)));
+          bottomConcPoints.push(L1.map(pt=>PointToSkewedGlobal(pt, point1)))
           bottomConcGridPoints.push({ key: pk1, point: point1 })
         }
         if ((L1.length > 0 && L2.length > 0 && L3.length === 0)) {
@@ -197,6 +180,7 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
           lConci += 1;
           bottomConcPoints = [];
           bottomConcGridPoints = [];
+        }
         }
       }
     }
@@ -222,7 +206,7 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
     return result
   }
    
-  export function steelPlateGenerator(sectionPointDict, pk1, pk2, point1, point2, plateKey, splicer, endCutFilletR) {
+  export function steelPlateGenerator(sectionPointDict, pk1, pk2, point1, point2, plateKey, splicer, endCutFilletR, crossKeys) {
     // 박스형 거더의 상하부플레이트 개구와 폐합에 대한 필렛을 위해 개발되었으며, 개구->폐합, 폐합->개구에 대해서만 가능하다, 
     // 개구->폐합->개구로 2단계의 경우에는 오류가 발생할 수 있음, 2020.05.25 by drlim
     let result = [[], [], []];
@@ -244,14 +228,7 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
     let latter1 = uf1[0][0] ? uf1[0][0].x : uf1[2][0].x //point1.forward
     let former2 = uf2[0][0] ? uf2[0][0].x : uf2[2][0].x //point2.backward
     let latter2 = uf3[0][0] ? uf3[0][0].x : uf3[2][0].x //point2.forward
-    let line1 = uf1[0][0] ? [PointToSkewedGlobal(uf1[0][0], point1),PointToSkewedGlobal(uf1[1][0], point1)]
-                          : [PointToSkewedGlobal(uf1[2][0], point1),PointToSkewedGlobal(uf1[2][1], point1)]
-    let line2 = uf2[0][0] ? [PointToSkewedGlobal(uf2[0][0], point2),PointToSkewedGlobal(uf2[1][0], point2)]
-                          : [PointToSkewedGlobal(uf2[2][0], point2),PointToSkewedGlobal(uf2[2][1], point2)]
-    
-    let isCross = Boolean(TwoLineIntersect(line1, line2)) && !pk1.includes("K")
-    //위의 로직으로 사용시, K값을 가진 변수가 앞에 나오는 경우, 교차하더라도 처리가 되지 않음 20220602 byDrlim
-  
+      
     let former3 = uf2[0].length > 0 ? uf2[0][0].y : uf2[2][0].y
     let latter3 = uf3[0].length > 0 ? uf3[0][0].y : uf3[2][0].y
     let former0 = uf0[0][0] ? uf0[0][0].y : uf0[2][0].y
@@ -319,11 +296,9 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
           }
         } else { //단부절취가 아닌경우 일반경우 해당
           for (let k in uf1) {
-            if (!isCross){
+            if (!crossKeys.includes(pk1)){
               plate1[k].forEach(element => result[k].push(element));
-            } else {
-              console.log("플랜지 단면교차로 인한 삭제 : ", pk1 )
-            }
+            } 
           }
         }
       }
@@ -424,7 +399,7 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
     return points
   }
 
-  function webPlateGenerator(sectionPointDict, pk1, pk2, point1, point2, webIndex, splicer, endCutFilletR, entrance) {
+  function webPlateGenerator(sectionPointDict, pk1, pk2, point1, point2, webIndex, splicer, endCutFilletR, entrance, crossKeys) {
     let result = [[], [], []]
     let L0 = sectionPointDict[pk1].backward.web[webIndex];
     let L1 = sectionPointDict[pk1].forward.web[webIndex];
@@ -440,16 +415,15 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
     L2.forEach(element => wplate2.push(PointToSkewedGlobal(element, point2)))
     L3.forEach(element => wplate3.push(PointToSkewedGlobal(element, point2)))
   
-    let line1 = [point1, wplate1[0]]
-    let line2 = [point2, wplate2[0]]
-    let isCross = Boolean(TwoLineIntersect(line1, line2)) && !pk1.includes("K")
-    
+    // let vec0 = [-point1.normalSin, point1.normalCos]
+    // let vec = wplate1.map((v, i)=>[wplate2[i].x - wplate1[i].x, wplate2[i].y - wplate1[i].y])
+    // let isCross = vec.some(v => v[0]*vec0[0]+v[1]*vec0[1] < 0)
   
     if (point2.mainStation > point1.mainStation) {
       if (pk1.substr(2, 2) === "K1" && entrance.add) {
         let ent = webEntrance(wplate1, wplate2, true, entrance)
         for (let k in ent) {
-          ent[k].forEach(element => result[k].push(element));
+          result[k].push(...ent[k]);
         }
       } else {
         let indent = (L1[0].y - L0[0].y) // bottom point of web
@@ -460,26 +434,20 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
             result[2].push(fpt[l], wplate1[1], wplate1[2], fpt3[l])
           }
         } else {
-          // L1.forEach(element => steelBoxDict[keyname]["points"][2].push(PointToSkewedGlobal(point1, element)))
-          if (!isCross){
-            wplate1.forEach(element => result[2].push(element));
-          } else {
-            console.log("복부판 단면교차로 인한 삭제 : ", pk1 )
-          }
+          if (!crossKeys.includes(pk1)){
+            result[2].push(...wplate1);;
+          } 
         }
       }
-      let FisB = true;
-      for (let i in L2) { if (L2[i] !== L3[i]) { FisB = false } }
-      let spCheck = false
-      splicer.forEach(function (sp) { if (pk2.substr(2, 2) === sp) { spCheck = true } })
+      let FisB = L2.every((l2, i)=> Math.abs(L2[i].x- L3[i].x)<0.1 && Math.abs(L2[i].y- L3[i].y)<0.1)
+      let spCheck = splicer.some(sp=>  pk2.includes(sp))
       if (!FisB || spCheck) {
-        if (pk2.substr(2, 2) === "K6" && entrance.add) {
+        if (pk2.includes("K6") && entrance.add) {
           let ent = webEntrance(wplate2, wplate1, false, entrance)
           for (let k in ent) {
             ent[k].forEach(element => result[k].push(element));
           }
-        }
-        else {
+        } else {
           let indent = (L2[0].y - L3[0].y) // bottom point of web
           if (indent > 100 && indent < 700) {
             let fpt = GetArcPoints(wplate1[0], wplate2[0], wplate3[0], endCutFilletR, 8);
@@ -488,14 +456,14 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance) {
               result[2].push(fpt[l], wplate2[1], wplate2[2], fpt3[l])
             }
           } else {
-            wplate2.forEach(element => result[2].push(element));
+            result[2].push(...wplate2);
           }
         }
       }
     } else { //
       splicer.forEach(function (sp) {
         if (pk2.substr(2, 2) === sp) {
-          wplate2.forEach(element => result[2].push(element));
+          result[2].push(...wplate2);
         }
       })
     }

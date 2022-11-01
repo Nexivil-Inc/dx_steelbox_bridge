@@ -848,15 +848,14 @@ function StudAutoGen(girderStation, sectionPointDict,) {
         let startKey = "G" + (i + 1).toFixed(0) + "K1"
         let endKey = ""
         let startOffset = 200;
-        let endOffset = 350;
+        let endOffset = 400;
         for (let j in girderStation[i]) {
-            if (girderStation[i][j].key.includes("TW") || girderStation[i][j].key.includes("K6") || girderStation[i][j].key.includes("SP")) {
+            if (girderStation[i][j].key.includes("K6") || girderStation[i][j].key.includes("SP")) { //girderStation[i][j].key.includes("TW") || 
                 endKey = girderStation[i][j].key;
                 let w = sectionPointDict[endKey].backward.input.wuf;
                 let isSeparated = sectionPointDict[endKey].backward.input.isSeparated
-
-                startOffset = startKey.includes("SP") ? 350 : 200;
-                endOffset = endKey.includes("SP") ? 350 : 200;
+                startOffset = startKey.includes("SP") ? 400 : 200;
+                endOffset = endKey.includes("SP") ? 400 : 200;
                 let layout = isSeparated ? "auto" : "auto"; //플랜지 중앙점을 기준으로 배치하는게 더 직관적일 듯함.
                 // result.push({ start: startKey, end: endKey, startOffset: startOffset, endOffset: endOffset, spacing: spacing, layout: layout })
                 result.push([startKey, endKey, startOffset, endOffset, spacing, layout])

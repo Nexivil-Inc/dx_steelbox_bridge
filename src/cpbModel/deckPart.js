@@ -12,7 +12,8 @@ export function CPBDeckPart(
     girderBaseInfo,
     mainPartInput,
     xbeamGrid,
-    deckPartInput
+    deckPartInput,
+    crossKeys
     ) {
     let deckModel = DeckSectionPoint(
         girderLayout,
@@ -23,10 +24,9 @@ export function CPBDeckPart(
         girderBaseInfo,
         mainPartInput,
         xbeamGrid,
+        crossKeys
     )
-    console.log(deckPartInput.barrierLayoutInput, deckPartInput.barrierSection)
     let barrier = BarrierSectionPointV2(girderLayout, centerLineStations, girderBaseInfo, mainPartInput, stPointDict, deckPartInput.barrierLayoutInput, deckPartInput.barrierSection)
-    console.log(barrier)
     return [ ...deckModel.deckPointDict['children'], ...barrier.newbarrierDict['children'], ...barrier.newpavementDict['children']]
 }
 
@@ -40,6 +40,7 @@ export function DeckSectionPoint(
     girderBaseInfo,
     mainPartInput,
     xbeamGrid,
+    crossKeys
 ) {
     const alignment = girderLayout.alignment;
     let slabLayout = mainPartInput.slabLayout
@@ -71,24 +72,14 @@ export function DeckSectionPoint(
         let mainPoint = centerLineStations[i].point
         if (centerLineStations[i].key.includes("CRK")){
             let station = centerLineStations[i].station;
-            // let leftgirderPoint = IntersectionPointOnSpline(LgirderLine, mainPoint, alignment);
-            // let rightgirderPoint = IntersectionPointOnSpline(RgirderLine, mainPoint, alignment);
-
             for (let j = 0; j < slabLayout.length - 1; j++) { //upperSlabPoint에 대한 함수화 예정
                 let ss = stPointDict[slabLayout[j][position]].mainStation;
                 let es = stPointDict[slabLayout[j + 1][position]].mainStation;
                 if (station >= ss && station <= es) {
                     let x = station - ss;
                     let l = es - ss;
-                    // let lcos = (mainPoint.normalCos * leftgirderPoint.normalCos + mainPoint.normalSin * leftgirderPoint.normalSin); // 사각에 곡선일 경우 각도차이 보정
-                    // let rcos = (mainPoint.normalCos * rightgirderPoint.normalCos + mainPoint.normalSin * rightgirderPoint.normalSin); // 사각에 곡선일 경우 각도차이 보정
-                    // leftOffset = (slabLayout[j][3] * (l - x) / l + slabLayout[j + 1][3] * (x) / l) / lcos + leftgirderPoint.offset;
-                    // rightOffset = (slabLayout[j][4] * (l - x) / l + slabLayout[j + 1][4] * (x) / l) / rcos + rightgirderPoint.offset;
                     leftOffset2 = slabLayout[j][3] * (l - x) / l + slabLayout[j + 1][3] * (x) / l;
                     rightOffset2 = slabLayout[j][4] * (l - x) / l + slabLayout[j + 1][4] * (x) / l;
-                    // slabThickness = slabLayout[j][H] * (l - x) / l + slabLayout[j + 1][H] * (x) / l;
-                    // endT = slabLayout[j][T] * (l - x) / l + slabLayout[j + 1][T] * (x) / l;
-                    // haunch = slabLayout[j][5]; //헌치의 변화에 따른 경계면에 대한 솔루션이 필요함
                 }
             }
             //slabSide 도면에 사용되는 변수생성
@@ -101,12 +92,6 @@ export function DeckSectionPoint(
             ])
         }
     }
-    
-    // let slabUpperLoft = []; //상면만 포함함
-    // let leftBorder = [];
-    // let rightBorder = [];
-    // let leftCantil = [];
-    // let rightCantil = [];
     let slabUpperAll = [];
     let blockLoft = [];
     let startCap = [];
@@ -142,7 +127,6 @@ export function DeckSectionPoint(
             let leftPoint = IntersectionPointOnSpline(lLine, mainPoint, alignment);
             let rightPoint = IntersectionPointOnSpline(rLine, mainPoint, alignment);
             let bool = kLineList.some(kline => Boolean(TwoLineIntersect(kline, [leftPoint, rightPoint]))) 
-           
             if (!bool || ["CRK"].some(k=>key.includes(k))){
                 deckPointDict.upperDict[key] = {leftPoint, rightPoint}
                 let lw = lowerSlabCantil(leftgirderPoint, stPointDict, girderBaseInfo, mainPartInput, 0); //sectionPoint가 있으면 없으면 될듯함
@@ -155,7 +139,6 @@ export function DeckSectionPoint(
                 } else if (key.includes("B7")){
                     block = [0, blockOutH];
                 }
-                //block에 대한 loft객체 생성 필요
                 for (let a of block){
                     let slabUpperPoints = [
                         PointToSkewedGlobal(lw[1], leftgirderPoint),
@@ -168,11 +151,6 @@ export function DeckSectionPoint(
                         PointToSkewedGlobal(rw[3], rightgirderPoint),
                         PointToSkewedGlobal(rw[2], rightgirderPoint),
                     ];
-                    // slabUpperLoft.push(slabUpperPoints.slice(3,6))
-                    // leftBorder.push(leftPoint);
-                    // rightBorder.push(rightPoint);
-                    // leftCantil.push(slabUpperPoints.slice(0,4).reverse())
-                    // rightCantil.push(slabUpperPoints.slice(-4).reverse())
                     slabUpperAll.push(slabUpperPoints)
                     if(key.includes("K0")){
                         startCap.push(...slabUpperPoints.slice().reverse())
@@ -180,7 +158,7 @@ export function DeckSectionPoint(
                     if(key.includes("K7")){
                         endCap.push(...slabUpperPoints.slice().reverse())
                     }
-                    if (a>0){
+                    if (a>0){ //endBlockOut에 대한 객체 생성코드
                         blockLoft.push(
                             [PointToSkewedGlobal({ x: 0, y: - girderBaseInfo.common.PavementT-a }, leftPoint),
                             PointToSkewedGlobal({ x: 0, y: - girderBaseInfo.common.PavementT-a }, mainPoint),
@@ -197,6 +175,7 @@ export function DeckSectionPoint(
                 }
                 if (key.includes("K7") && blockLoft.length>1){
                     deckPointDict["children"].push(new Loft(blockLoft, true, "stud", { group : group, key: "endBlockOut", part: "concrete" }))
+                    blockLoft = [];
                 }
                 
             }
@@ -212,6 +191,7 @@ export function DeckSectionPoint(
         for (let i = 0; i< girderStation[j].length;i++){
             let key = girderStation[j][i].key
             let station = girderStation[j][i].station
+            if (!crossKeys.includes(key)){
             let isHaunch = true;
             if (station <=stPointDict["G" + String(j+1)+ "K2"].mainStation || station >=stPointDict["G" + String(j+1) + "K5"].mainStation){
                 isHaunch = false
@@ -279,7 +259,7 @@ export function DeckSectionPoint(
                     endCap.push(...slabLowerSub0)
                 }
             }
-            
+        }
         }
         deckPointDict["children"].push(new Loft(slabLowerPoints, false, "concrete", { group : group, key: "slab", part: "concrete" }))
     }

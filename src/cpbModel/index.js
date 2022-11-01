@@ -1,3 +1,5 @@
+import {sceneAdder} from 'global';
+import { girderStation3D, GridView3D } from "./3D";
 import { EtcPartAuto, GridInputAutoGen, GridInputFitting} from "./autoGen";
 import { SectionPointDictFn, StationListFn, StGenerator } from "./context";
 import { CPBDeckPart } from "./deckPart";
@@ -60,6 +62,7 @@ export function MainPartDefaultDataAutoGen() {
     this.addOutput("centerLineStation", "");
     this.addOutput("girderStation", "");
     this.addOutput("xbeamGrid", "");
+    this.addOutput("crossKeys", "");
   }
   
   StationList.prototype.onExecute = function () {
@@ -67,6 +70,7 @@ export function MainPartDefaultDataAutoGen() {
     this.setOutputData(0, result.centerLine)
     this.setOutputData(1, result.girder)
     this.setOutputData(2, result.xbeamGrid)
+    this.setOutputData(3, result.crossKeys)
   }
 
   export function InitPoint() {
@@ -99,10 +103,11 @@ export function MainPartDefaultDataAutoGen() {
     this.addInput("MainPartInput","object");
     this.addInput("MainPartSectionInput","object");
     this.addInput("entrance","object");
+    this.addInput("crossKeys","");
     this.addOutput("mainPartModel","object");
   }
   GenMainPartModel.prototype.onExecute = function() {
-    const result = CPBMainPart(this.getInputData(0), this.getInputData(1), this.getInputData(2), this.getInputData(3), this.getInputData(4), this.getInputData(5))
+    const result = CPBMainPart(this.getInputData(0), this.getInputData(1), this.getInputData(2), this.getInputData(3), this.getInputData(4), this.getInputData(5), this.getInputData(6))
     this.setOutputData(0, result)
   }
 
@@ -111,10 +116,11 @@ export function MainPartDefaultDataAutoGen() {
     this.addInput("girderStation",0);
     this.addInput("sectionPointDict","object");
     this.addInput("ETCPartInput","object");
+    this.addInput("crossKeys","");
     this.addOutput("ETCPartModel","object");
   }
   GenETCPartModel.prototype.onExecute = function() {
-    const result = CPBEtcPart(this.getInputData(0), this.getInputData(1), this.getInputData(2), this.getInputData(3))
+    const result = CPBEtcPart(this.getInputData(0), this.getInputData(1), this.getInputData(2), this.getInputData(3), this.getInputData(4))
     this.setOutputData(0, result)
   }
 
@@ -128,11 +134,30 @@ export function MainPartDefaultDataAutoGen() {
     this.addInput("MainPartInput","object");
     this.addInput("xbeamGrid","object");
     this.addInput("deckPartInput","object");
+    this.addInput("crossKeys","");
     this.addOutput("DeckPartModel","object");
     
   }
 
   GenDeckPartModel.prototype.onExecute = function() {
-    const result = CPBDeckPart(this.getInputData(0), this.getInputData(1), this.getInputData(2), this.getInputData(3), this.getInputData(4), this.getInputData(5), this.getInputData(6), this.getInputData(7), this.getInputData(8))
+    const result = CPBDeckPart(this.getInputData(0), this.getInputData(1), this.getInputData(2), this.getInputData(3), this.getInputData(4), this.getInputData(5), this.getInputData(6), this.getInputData(7), this.getInputData(8), this.getInputData(9))
     this.setOutputData(0, result)
+  }
+
+  export function GirderStationView() {
+    this.addInput("girderStation", "girderStation");
+    this.addInput("sectionPointDict", "object");
+    this.addInput("initPoint", "point");
+    // this.addOutput("temOut", "temOut");
+  }
+  
+  GirderStationView.prototype.onExecute = function () {
+    let result = girderStation3D(this.getInputData(0), this.getInputData(1), this.getInputData(2))
+    result["userData"] = { name: "Mark",part: "refPlan",key:"girderStation"  } 
+    sceneAdder({ layer: 0, mesh: result});
+    let result2 = GridView3D(this.getInputData(0), this.getInputData(1), this.getInputData(2))
+    result2["userData"] = { name: "Mark",part: "Grid3D",key:"Grid3D"  } 
+    sceneAdder({ layer: 0, mesh: result2});
+
+
   }

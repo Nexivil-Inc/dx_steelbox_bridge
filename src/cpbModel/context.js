@@ -1,4 +1,4 @@
-import { DegreeToRad, IntersectionPointOnSpline, MainPointGenerator, RadToDegree, splineProp, StPointToParallel, TwoPointsLength } from "@nexivil/package-modules";
+import { DegreeToRad, IntersectionPointOnSpline, IsPointInPolygon, MainPointGenerator, PlateRestPoint, Point, PointToSkewedGlobal, RadToDegree, splineProp, StPointToParallel, TwoPointsLength, WebPoint } from "@nexivil/package-modules";
 
 export function StGenerator(girderLayout, girderBaseInfo, gridInput) {
     let alignment = girderLayout.alignment
@@ -211,7 +211,7 @@ export function StGenerator(girderLayout, girderBaseInfo, gridInput) {
   
     cs.sort(function (a, b) { return a.station < b.station ? -1 : 1; })
   
-    let spanLength = []
+    let spanLength = [];
     for (let i = 0; i < gs.length; i++) {
       let spanNum = 0;
       let totalLength = 0;
@@ -243,62 +243,28 @@ export function StGenerator(girderLayout, girderBaseInfo, gridInput) {
         gs[i][j]["point"]["spanPoint"] = (gs[i][j]["point"]["girderStation"] - spanLength[i][gs[i][j]["point"]["spanNum"]]) / gs[i][j]["point"]["spanLength"]
       }
     }
-    return { girder: gs, centerLine: cs, xbeamGrid }
+    let mainKey =["K1", "K2", "K3", "K4", "K5", "K6"];
+    let crossKeys = [];
+    for (let i = 0; i < gs.length; i++) {
+      let mainLines = mainKey.map(k=>
+        [PointToSkewedGlobal(new Point(-1500,0), stPointDict["G"+String(i+1)+k]),
+          PointToSkewedGlobal(new Point(1500,0), stPointDict["G"+String(i+1)+k])]
+      )
+      for (let j = 0; j < gs[i].length; j++) {
+        let pt = gs[i][j].point
+        let l2 = [PointToSkewedGlobal(new Point(-1500,0), pt),PointToSkewedGlobal(new Point(1500,0), pt)]
+        let isCross = mainLines.some(function(l1){
+          let vec0 = [l1[0].x - l2[0].x, l1[0].y - l2[0].y];
+          let vec1 = [l1[1].x - l2[1].x, l1[1].y - l2[1].y];
+          return vec0[0]*vec1[0]+vec0[1]*vec1[1]<0
+        })
+        if (isCross){
+          crossKeys.push(gs[i][j].key)
+        }
+      }
+    }
+    return { girder: gs, centerLine: cs, xbeamGrid, crossKeys }
   }
-
-  export function WebPoint(point1, point2, tan1, H) {
-    let x;
-    let y;
-    if (point1.x === point2.x) {
-        x = point1.x;
-        y = tan1 === null ? null : tan1 * x + H;
-    } else {
-        let a = (point1.y - point2.y) / (point1.x - point2.x);
-        let b = point1.y - a * point1.x;
-        x = tan1 === null ? point1.x : (b - H) / (tan1 - a);
-        y = a * x + b;
-    }
-    return { x, y };
-}
-
-export function PlateRestPoint(point1, point2, tan1, tan2, thickness) {
-    let x3;
-    let x4;
-    let y3;
-    let y4;
-    if (point1.x === point2.x) {
-        x3 = point1.x + thickness;
-        x4 = point2.x + thickness;
-        y3 = tan1 === null ? point1.y : tan1 * (x3 - point1.x) + point1.y;
-        y4 = tan2 === null ? point2.y : tan2 * (x4 - point2.x) + point2.y;
-    } else {
-        let a = (point1.y - point2.y) / (point1.x - point2.x);
-        let b = point1.y - a * point1.x;
-        // let sign = a > 0 ? 1 : -1;
-        let alpha = a === 0 ? thickness : thickness * Math.sqrt(1 + 1 / a ** 2);
-        if (Math.abs(1 / tan1) < 0.001) {
-            x3 = point1.x;
-        } else {
-            if (a === 0) {
-                x3 = tan1 === null ? point1.x : point1.x + thickness / tan1;
-            } else {
-                x3 = tan1 === null ? point1.x : (-a * alpha + b + tan1 * point1.x - point1.y) / (tan1 - a);
-            }
-        }
-        if (Math.abs(1 / tan2) < 0.001) {
-            x4 = point2.x;
-        } else {
-            if (a === 0) {
-                x4 = tan2 === null ? point2.x : point2.x + thickness / tan2;
-            } else {
-                x4 = tan2 === null ? point2.x : (-a * alpha + b + tan2 * point2.x - point2.y) / (tan2 - a);
-            }
-        }
-        y3 = a === 0 ? point1.y + thickness : a * (x3 - alpha) + b;
-        y4 = a === 0 ? point2.y + thickness : a * (x4 - alpha) + b;
-    }
-    return [point1, point2, { x: x4, y: y4 }, { x: x3, y: y3 }];
-}
 
 
   export function SectionPointDictFn(stPointDict, girderBaseInfo, mainPartInput) {
@@ -311,23 +277,19 @@ export function PlateRestPoint(point1, point2, tan1, tan2, thickness) {
         UL: girderBaseInfo.common.T ? girderBaseInfo.common.T / 2 : girderBaseInfo.common.B / 2,
         UR: girderBaseInfo.common.T ? girderBaseInfo.common.T / 2 : girderBaseInfo.common.B / 2,
     }
+    const centerThickness = girderBaseInfo.support.SlabH + girderBaseInfo.support.HaunchH + girderBaseInfo.common.PavementT; //slabInfo.slabThickness + slabInfo.haunchHeight; //  slab변수 추가
+    const dH = girderBaseInfo.end.SlabH - girderBaseInfo.support.SlabH
+    const isFlat = girderBaseInfo.common.isFlat;
     for (let k in stPointDict) {
         if (k.slice(0, 1) === "G") {
             let point = stPointDict[k];
             let girderIndex = k.slice(1, 2) - 1; //거더개수 9개 제한
             let baseInput = {}
             let station = point.mainStation;
-            let isFlat = girderBaseInfo.common.isFlat;
+
             let gradient = isFlat ? 0 : point.gradientY;
             let skew = point.skew;
             let pointSectionInfo = PointSectionInfo2(station, skew, mainPartInput, girderIndex, stPointDict);
-            // if (k === "G1TW2"){
-            //     console.log(pointSectionInfo)
-            // }
-            // let sectionInfo = girderBaseInfo2[girderIndex].section;
-
-            const centerThickness = girderBaseInfo.support.SlabH + girderBaseInfo.support.HaunchH + girderBaseInfo.common.PavementT; //slabInfo.slabThickness + slabInfo.haunchHeight; //  slab변수 추가
-            //   const height = pointSectionInfo.forward.height + centerThickness;
             const lwb = { x: - sectionInfo.B / 2, y: -sectionInfo.H - centerThickness };
             const lwt = { x: - sectionInfo.UL, y: - centerThickness };
             const rwb = { x: sectionInfo.B / 2, y: -sectionInfo.H - centerThickness };
@@ -335,7 +297,6 @@ export function PlateRestPoint(point1, point2, tan1, tan2, thickness) {
             let forward = {};
             let backward = {};
             let ps = {};
-            // let skew = pointSectionInfo.forward.skew; // gridPoint의 skew가 있어 사용여부 확인후 삭제요망
             for (let i = 0; i < 2; i++) {
                 if (i === 0) {
                     ps = pointSectionInfo.forward
@@ -801,3 +762,5 @@ export function PointSectionInfo2(station, skew, gridInput, girderIndex, pointDi
 
     return { forward, backward }
 }
+
+

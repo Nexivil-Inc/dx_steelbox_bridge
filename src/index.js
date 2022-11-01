@@ -1,5 +1,5 @@
 import { LiteGraph, THREE } from "global";
-import { EscPartDefaultDataAutoGen, GenDeckPartModel, GenETCPartModel, GenMainPartModel, GenStPointDict, InitPoint, MainPartDefaultDataAutoGen, MainPartInputFit, SectionPointDict, StationList } from "./cpbModel";
+import { EscPartDefaultDataAutoGen, GenDeckPartModel, GenETCPartModel, GenMainPartModel, GenStPointDict, GirderStationView, InitPoint, MainPartDefaultDataAutoGen, MainPartInputFit, SectionPointDict, StationList } from "./cpbModel";
 import { GenBoxGirder2D } from "./drawing";
 import {
     FittingGridInput,
@@ -89,3 +89,5 @@ LiteGraph.registerNodeType("CPB/SectionPointDict", SectionPointDict);
 LiteGraph.registerNodeType("CPB/GenMainPartModel", GenMainPartModel);
 LiteGraph.registerNodeType("CPB/GenETCPartModel", GenETCPartModel);
 LiteGraph.registerNodeType("CPB/GenDeckPartModel", GenDeckPartModel);
+LiteGraph.registerNodeType("CPB/GirderStationView", GirderStationView);
+

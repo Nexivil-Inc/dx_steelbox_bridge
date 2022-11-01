@@ -1,14 +1,14 @@
 import { Extrude, Loft, PlateRestPoint, Point, PointToSkewedGlobal, RefPoint, TwoPointsLength } from "@nexivil/package-modules";
-import { scallop, Stud, toRefPoint } from "@nexivil/package-modules/src/temp";
+import { DivideRebarSpacing, scallop, Stud, toRefPoint } from "@nexivil/package-modules/src/temp";
 import { Bolt } from "./3D";
 import { BoltLayout, vPlateGenV2 } from "./diaVstiffXbeam";
 
-export function CPBEtcPart(stPointDict, girderStation, sectionPointDict, etcPartInput) {
-    let hStiffModel = HorStiffDict(stPointDict, sectionPointDict, etcPartInput.hStiff, etcPartInput.isStiff??false)
-    let jackupModel = JackupStiffDictV2(stPointDict, sectionPointDict, etcPartInput.jackup)
-    let studModel = StudPoint(girderStation, sectionPointDict, etcPartInput.stud, etcPartInput.bottomStud)
-    let spport = SupportGenerator(etcPartInput.supportFixed, etcPartInput.support, stPointDict, sectionPointDict)
-    return [ ...hStiffModel['children'], ...jackupModel['children'], ...studModel['children'], ...spport["model"]['children']]
+export function CPBEtcPart(stPointDict, girderStation, sectionPointDict, etcPartInput, crossKeys) {
+    let hStiffModel = HorStiffDict(stPointDict, sectionPointDict, etcPartInput.hStiff, etcPartInput.isStiff ?? false);
+    let jackupModel = JackupStiffDictV2(stPointDict, sectionPointDict, etcPartInput.jackup);
+    let studModel = StudPoint(girderStation, sectionPointDict, etcPartInput.stud, etcPartInput.bottomStud, crossKeys);
+    let spport = SupportGenerator(etcPartInput.supportFixed, etcPartInput.support, stPointDict, sectionPointDict);
+    return [...hStiffModel["children"], ...jackupModel["children"], ...studModel["children"], ...spport["model"]["children"]];
 }
 
 export function SplicePlateV2(stPointDict, sectionPointDict, sPliceLayout, sPliceSectionList) {
@@ -74,7 +74,6 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
     let upperFlangeOutter = { nb: 0, n: 0 };
     let upperFlangeInner = [];
     let lowerFlangeOutter = { nb: 0, n: 0 };
-
 
     let web = { nb: 0 };
     let sp = {
@@ -184,7 +183,8 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
     let yRot = -Math.atan(gradient);
     let centerPoint = new RefPoint(PointToSkewedGlobal(uPoint, iPoint), iPoint.xAxis, xRot, yRot, sp.uflangeThickness / 2);
 
-    if (iSectionPoint.uflange[2].length > 0) { //폐합
+    if (iSectionPoint.uflange[2].length > 0) {
+        //폐합
         let lx1 = Math.sqrt((iSectionPoint.web[0][1].x - uPoint.x) ** 2 + (iSectionPoint.web[0][1].y - uPoint.y) ** 2);
         let lx2 = Math.sqrt((iSectionPoint.web[1][1].x - uPoint.x) ** 2 + (iSectionPoint.web[1][1].y - uPoint.y) ** 2);
         let sec = (lx1 + lx2) / (iSectionPoint.web[1][1].x - iSectionPoint.web[0][1].x);
@@ -213,10 +213,18 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
             { y: -spliceSection.uRibJointLength / 2, x: iSectionPoint.input.Urib.height - spliceSection.uRibJointHeight },
         ];
         for (let i in iSectionPoint.input.Urib.layout) {
-            let uRibPoint = new RefPoint(PointToSkewedGlobal({
-                x: iSectionPoint.input.Urib.layout[i],
-                y: uPoint.y + gradient * iSectionPoint.input.Urib.layout[i],
-            }, iPoint), iPoint.xAxis, Math.atan(iPoint.gradientX), Math.PI / 2);
+            let uRibPoint = new RefPoint(
+                PointToSkewedGlobal(
+                    {
+                        x: iSectionPoint.input.Urib.layout[i],
+                        y: uPoint.y + gradient * iSectionPoint.input.Urib.layout[i],
+                    },
+                    iPoint
+                ),
+                iPoint.xAxis,
+                Math.atan(iPoint.gradientX),
+                Math.PI / 2
+            );
             let uRibBolt = {
                 P: fBolt.P,
                 G: fBolt.G,
@@ -226,16 +234,28 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
                 l: 2 * spliceSection.uRibJointThickness + iSectionPoint.input.Urib.thickness,
             };
             result["children"].push(
-                new Extrude(uRibJoint, spliceSection.uRibJointThickness, { refPoint: uRibPoint, dz: iSectionPoint.input.Urib.thickness / 2 }, material, 
-                { part: gridkey, key: "uRibJoint" + (i * 2 + 1).toString() })
+                new Extrude(
+                    uRibJoint,
+                    spliceSection.uRibJointThickness,
+                    { refPoint: uRibPoint, dz: iSectionPoint.input.Urib.thickness / 2 },
+                    material,
+                    { part: gridkey, key: "uRibJoint" + (i * 2 + 1).toString() }
+                )
             );
             result["children"].push(
-                new Extrude(uRibJoint, spliceSection.uRibJointThickness, { refPoint: uRibPoint, dz: -spliceSection.uRibJointThickness - iSectionPoint.input.Urib.thickness / 2 }, material, 
-                { part: gridkey, key: "uRibJoint" + (i * 2 + 2).toString() })
+                new Extrude(
+                    uRibJoint,
+                    spliceSection.uRibJointThickness,
+                    { refPoint: uRibPoint, dz: -spliceSection.uRibJointThickness - iSectionPoint.input.Urib.thickness / 2 },
+                    material,
+                    { part: gridkey, key: "uRibJoint" + (i * 2 + 2).toString() }
+                )
             );
             result["children"].push(
-                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", uRibJoint), uRibBolt, uRibPoint, boltMaterial, 
-                { part: gridkey, key: "uRibJoint" + (i * 2 + 1).toString() + "bolt" })
+                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", uRibJoint), uRibBolt, uRibPoint, boltMaterial, {
+                    part: gridkey,
+                    key: "uRibJoint" + (i * 2 + 1).toString() + "bolt",
+                })
             );
             xList.push((iSectionPoint.input.Urib.layout[i] - iSectionPoint.input.Urib.thickness / 2) * sec - spliceSection.margin2);
             xList.push((iSectionPoint.input.Urib.layout[i] + iSectionPoint.input.Urib.thickness / 2) * sec + spliceSection.margin2);
@@ -258,15 +278,20 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
                 l: 2 * spliceSection.uflangeJointThickness + sp.uflangeThickness,
             };
             result["children"].push(
-                new Extrude(TopFlange2, spliceSection.uflangeJointThickness, { refPoint: centerPoint, dz: -sp.uflangeThickness / 2  - spliceSection.uflangeJointThickness }, material, 
-                { part: gridkey, key: keyName })
+                new Extrude(
+                    TopFlange2,
+                    spliceSection.uflangeJointThickness,
+                    { refPoint: centerPoint, dz: -sp.uflangeThickness / 2 - spliceSection.uflangeJointThickness },
+                    material,
+                    { part: gridkey, key: keyName }
+                )
             );
             result["children"].push(
-                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", TopFlange2), topBolt, centerPoint, boltMaterial, 
-                { part: gridkey, key: keyName + "bolt" })
+                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", TopFlange2), topBolt, centerPoint, boltMaterial, { part: gridkey, key: keyName + "bolt" })
             );
         }
-    } else { // 개구
+    } else {
+        // 개구
         for (let i = 0; i < 2; i++) {
             let lx = Math.sqrt((iSectionPoint.web[i][1].x - uPoint.x) ** 2 + (iSectionPoint.web[i][1].y - uPoint.y) ** 2);
             let sign = i === 0 ? -1 : 1;
@@ -278,8 +303,10 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
             ];
             let keyName = i === 0 ? "lTop" : "rTop";
             result["children"].push(
-                new Extrude(TopFlange, spliceSection.uflangeJointThickness, { refPoint: centerPoint, dz: sp.uflangeThickness / 2 }, material, 
-                { part: gridkey, key: keyName })
+                new Extrude(TopFlange, spliceSection.uflangeJointThickness, { refPoint: centerPoint, dz: sp.uflangeThickness / 2 }, material, {
+                    part: gridkey,
+                    key: keyName,
+                })
             );
             if (i === 0) {
                 upperFlangeOutter["b"] = Math.abs(TopFlange[0].x - TopFlange[2].x);
@@ -307,28 +334,43 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
                 l: 2 * spliceSection.uflangeJointThickness + sp.uflangeThickness,
             };
             result["children"].push(
-                new Extrude(TopFlange2, spliceSection.uflangeJointThickness, { refPoint: centerPoint, dz: -sp.uflangeThickness / 2  - spliceSection.uflangeJointThickness }, material, 
-                { part: gridkey, key: keyName + "2" })
+                new Extrude(
+                    TopFlange2,
+                    spliceSection.uflangeJointThickness,
+                    { refPoint: centerPoint, dz: -sp.uflangeThickness / 2 - spliceSection.uflangeJointThickness },
+                    material,
+                    { part: gridkey, key: keyName + "2" }
+                )
             );
             result["children"].push(
-                new Extrude(TopFlange3, spliceSection.uflangeJointThickness, { refPoint: centerPoint, dz: -sp.uflangeThickness / 2  - spliceSection.uflangeJointThickness }, material, 
-                { part: gridkey, key: keyName + "3"})
+                new Extrude(
+                    TopFlange3,
+                    spliceSection.uflangeJointThickness,
+                    { refPoint: centerPoint, dz: -sp.uflangeThickness / 2 - spliceSection.uflangeJointThickness },
+                    material,
+                    { part: gridkey, key: keyName + "3" }
+                )
             );
             result["children"].push(
-                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", TopFlange2), topBolt2, centerPoint, boltMaterial, 
-                { part: gridkey, key: keyName + "bolt2" })
+                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", TopFlange2), topBolt2, centerPoint, boltMaterial, {
+                    part: gridkey,
+                    key: keyName + "bolt2",
+                })
             );
             result["children"].push(
-                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", TopFlange3), topBolt2, centerPoint, boltMaterial, 
-                { part: gridkey, key: keyName + "bolt3" })
+                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", TopFlange3), topBolt2, centerPoint, boltMaterial, {
+                    part: gridkey,
+                    key: keyName + "bolt3",
+                })
             );
         }
     }
     let lPoint = { x: 0, y: iSectionPoint.web[0][0].y };
     let bXRad = Math.atan(iPoint.gradientX + iSectionPoint.input.gradientlf);
-    centerPoint = new RefPoint(PointToSkewedGlobal(lPoint, iPoint), iPoint.xAxis, bXRad, 0, -sp.lflangeThickness / 2)
+    centerPoint = new RefPoint(PointToSkewedGlobal(lPoint, iPoint), iPoint.xAxis, bXRad, 0, -sp.lflangeThickness / 2);
 
-    if (iSectionPoint.lflange[2].length > 0) {//폐합
+    if (iSectionPoint.lflange[2].length > 0) {
+        //폐합
         let lx1 = Math.sqrt((iSectionPoint.web[0][0].x - lPoint.x) ** 2 + (iSectionPoint.web[0][0].y - lPoint.y) ** 2);
         let lx2 = Math.sqrt((iSectionPoint.web[1][0].x - lPoint.x) ** 2 + (iSectionPoint.web[1][0].y - lPoint.y) ** 2);
         let sec = 1; // (lx1 + lx2) / (iSectionPoint.web[1][1].x - iSectionPoint.web[0][1].x) //제형단면의 경우 종리브가 깊이에 비례해서 간격이 바뀔경우를 고려
@@ -342,10 +384,16 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
         // result[keyName] = hPlateGenV2(BottomFlange, centerPoint, spliceSection.lflangeJointThickness, - sp.lflangeThickness - spliceSection.lflangeJointThickness, 90,
         //   bXRad, 0, null, false, side2D, false)
         result["children"].push(
-            new Extrude(BottomFlange, spliceSection.lflangeJointThickness, { refPoint: centerPoint, dz: -sp.lflangeThickness / 2 - spliceSection.lflangeJointThickness}, material, {
-                part: gridkey,
-                key: keyName,
-            })
+            new Extrude(
+                BottomFlange,
+                spliceSection.lflangeJointThickness,
+                { refPoint: centerPoint, dz: -sp.lflangeThickness / 2 - spliceSection.lflangeJointThickness },
+                material,
+                {
+                    part: gridkey,
+                    key: keyName,
+                }
+            )
         );
         lowerFlangeOutter["b"] = Math.abs(BottomFlange[0].x - BottomFlange[2].x);
         lowerFlangeOutter["h"] = Math.abs(BottomFlange[0].y - BottomFlange[2].y);
@@ -359,7 +407,12 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
         ];
 
         for (let i in iSectionPoint.input.Lrib.layout) {
-            let lRibPoint = new RefPoint(PointToSkewedGlobal({ x: iSectionPoint.input.Lrib.layout[i], y: lPoint.y }, iPoint), iPoint.xAxis, bXRad, Math.PI / 2);
+            let lRibPoint = new RefPoint(
+                PointToSkewedGlobal({ x: iSectionPoint.input.Lrib.layout[i], y: lPoint.y }, iPoint),
+                iPoint.xAxis,
+                bXRad,
+                Math.PI / 2
+            );
             // result["lRibJoint" + (i * 2 + 1).toString()] = hPlateGenV2(lRibJoint, lRibPoint, spliceSection.lRibJointThickness, iSectionPoint.input.Lrib.thickness / 2, 90, bXRad, -Math.PI / 2, null, false)
             let lRibBolt = {
                 P: fBolt.P,
@@ -370,16 +423,28 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
                 l: 2 * spliceSection.lRibJointThickness + iSectionPoint.input.Lrib.thickness,
             };
             result["children"].push(
-                new Extrude(lRibJoint, spliceSection.lRibJointThickness, { refPoint: lRibPoint, dz: iSectionPoint.input.Lrib.thickness / 2 }, material, 
-                { part: gridkey, key: "lRibJoint" + (i * 2 + 1).toString() })
+                new Extrude(
+                    lRibJoint,
+                    spliceSection.lRibJointThickness,
+                    { refPoint: lRibPoint, dz: iSectionPoint.input.Lrib.thickness / 2 },
+                    material,
+                    { part: gridkey, key: "lRibJoint" + (i * 2 + 1).toString() }
+                )
             );
             result["children"].push(
-                new Extrude(lRibJoint, spliceSection.lRibJointThickness, { refPoint: lRibPoint, dz: -spliceSection.lRibJointThickness - iSectionPoint.input.Lrib.thickness / 2 }, material, 
-                { part: gridkey, key: "lRibJoint" + (i * 2 + 2).toString() })
+                new Extrude(
+                    lRibJoint,
+                    spliceSection.lRibJointThickness,
+                    { refPoint: lRibPoint, dz: -spliceSection.lRibJointThickness - iSectionPoint.input.Lrib.thickness / 2 },
+                    material,
+                    { part: gridkey, key: "lRibJoint" + (i * 2 + 2).toString() }
+                )
             );
             result["children"].push(
-                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", lRibJoint), lRibBolt, lRibPoint, boltMaterial, 
-                { part: gridkey, key: "lRibJoint" + (i * 2 + 1).toString() + "bolt" })
+                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", lRibJoint), lRibBolt, lRibPoint, boltMaterial, {
+                    part: gridkey,
+                    key: "lRibJoint" + (i * 2 + 1).toString() + "bolt",
+                })
             );
             xList.push((iSectionPoint.input.Lrib.layout[i] - iSectionPoint.input.Lrib.thickness / 2) * sec - spliceSection.margin2);
             xList.push((iSectionPoint.input.Lrib.layout[i] + iSectionPoint.input.Lrib.thickness / 2) * sec + spliceSection.margin2);
@@ -402,12 +467,16 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
                 l: 2 * spliceSection.lflangeJointThickness + sp.lflangeThickness,
             };
             result["children"].push(
-                new Extrude(BottomFlange2, spliceSection.lflangeJointThickness, { refPoint: centerPoint, dz: sp.lflangeThickness / 2 }, material, 
-                { part: gridkey, key: keyName })
+                new Extrude(BottomFlange2, spliceSection.lflangeJointThickness, { refPoint: centerPoint, dz: sp.lflangeThickness / 2 }, material, {
+                    part: gridkey,
+                    key: keyName,
+                })
             );
             result["children"].push(
-                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", BottomFlange2), bottomBolt, centerPoint, boltMaterial, 
-                { part: gridkey, key: keyName + "bolt" })
+                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", BottomFlange2), bottomBolt, centerPoint, boltMaterial, {
+                    part: gridkey,
+                    key: keyName + "bolt",
+                })
             );
         }
     } else {
@@ -449,31 +518,43 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
                 l: 2 * spliceSection.lflangeJointThickness + sp.lflangeThickness,
             };
             result["children"].push(
-                new Extrude(BottomFlange, spliceSection.lflangeJointThickness, { refPoint: centerPoint, dz: - sp.lflangeThickness / 2   - spliceSection.lflangeJointThickness}, material, 
-                { part: gridkey, key: keyName })
+                new Extrude(
+                    BottomFlange,
+                    spliceSection.lflangeJointThickness,
+                    { refPoint: centerPoint, dz: -sp.lflangeThickness / 2 - spliceSection.lflangeJointThickness },
+                    material,
+                    { part: gridkey, key: keyName }
+                )
             );
             result["children"].push(
-                new Extrude(BottomFlange2, spliceSection.lflangeJointThickness, { refPoint: centerPoint, dz: sp.lflangeThickness / 2 }, material, 
-                { part: gridkey, key: keyName + "2" })
+                new Extrude(BottomFlange2, spliceSection.lflangeJointThickness, { refPoint: centerPoint, dz: sp.lflangeThickness / 2 }, material, {
+                    part: gridkey,
+                    key: keyName + "2",
+                })
             );
             result["children"].push(
-                new Extrude(BottomFlange3, spliceSection.lflangeJointThickness, { refPoint: centerPoint, dz: sp.lflangeThickness / 2 }, material, 
-                { part: gridkey, key: keyName + "3"})
+                new Extrude(BottomFlange3, spliceSection.lflangeJointThickness, { refPoint: centerPoint, dz: sp.lflangeThickness / 2 }, material, {
+                    part: gridkey,
+                    key: keyName + "3",
+                })
             );
             result["children"].push(
-                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", BottomFlange2), bottomBolt2, centerPoint, boltMaterial, 
-                { part: gridkey, key: keyName + "bolt2" })
+                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", BottomFlange2), bottomBolt2, centerPoint, boltMaterial, {
+                    part: gridkey,
+                    key: keyName + "bolt2",
+                })
             );
             result["children"].push(
-                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", BottomFlange3), bottomBolt2, centerPoint, boltMaterial, 
-                { part: gridkey, key: keyName + "bolt3" })
+                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", BottomFlange3), bottomBolt2, centerPoint, boltMaterial, {
+                    part: gridkey,
+                    key: keyName + "bolt3",
+                })
             );
         }
     }
 
     return result;
 }
-
 
 export function HorStiffDict(pointDict, sectionPointDict, hstiffLayout, isStiff = true) {
     let result = { parent: [], children: [] };
@@ -486,39 +567,39 @@ export function HorStiffDict(pointDict, sectionPointDict, hstiffLayout, isStiff 
     // const chamfer = 6;
     // const isTop =7;
     // const offset =8;
-    if (isStiff){
-    for (let i = 0; i < hstiffLayout.length; i++) {
-        if (hstiffLayout[i][from] && hstiffLayout[i][to]) {
-            let pk1 = hstiffLayout[i][from];
-            let pk2 = hstiffLayout[i][to];
-            let point1 = pointDict[pk1];
-            let point2 = pointDict[pk2];
-            let webPoints1 = [
-                sectionPointDict[pk1].forward.web[0][0],
-                sectionPointDict[pk1].forward.web[0][1],
-                sectionPointDict[pk1].forward.web[1][0],
-                sectionPointDict[pk1].forward.web[1][1],
-            ];
-            let webSide1 = sectionPointDict[pk1].forward.webSide;
-            let webPoints2 = [
-                sectionPointDict[pk2].backward.web[0][0],
-                sectionPointDict[pk2].backward.web[0][1],
-                sectionPointDict[pk2].backward.web[1][0],
-                sectionPointDict[pk2].backward.web[1][1],
-            ];
-            let webSide2 = sectionPointDict[pk2].backward.webSide;
-            // result[(i+1).toString() + pk1 + pk2] = HstiffGen(point1, point2, webPoints1, webPoints2, hstiffLayout[i], pk1, pk2);
-            let dia = HstiffGenV2(point1, point2, webPoints1, webPoints2, webSide1, webSide2, hstiffLayout[i], pk1, pk2);
-            result["children"].push(...dia.children);
-            result["parent"].push(...dia.parent);
+    if (isStiff) {
+        for (let i = 0; i < hstiffLayout.length; i++) {
+            if (hstiffLayout[i][from] && hstiffLayout[i][to]) {
+                let pk1 = hstiffLayout[i][from];
+                let pk2 = hstiffLayout[i][to];
+                let point1 = pointDict[pk1];
+                let point2 = pointDict[pk2];
+                let webPoints1 = [
+                    sectionPointDict[pk1].forward.web[0][0],
+                    sectionPointDict[pk1].forward.web[0][1],
+                    sectionPointDict[pk1].forward.web[1][0],
+                    sectionPointDict[pk1].forward.web[1][1],
+                ];
+                let webSide1 = sectionPointDict[pk1].forward.webSide;
+                let webPoints2 = [
+                    sectionPointDict[pk2].backward.web[0][0],
+                    sectionPointDict[pk2].backward.web[0][1],
+                    sectionPointDict[pk2].backward.web[1][0],
+                    sectionPointDict[pk2].backward.web[1][1],
+                ];
+                let webSide2 = sectionPointDict[pk2].backward.webSide;
+                // result[(i+1).toString() + pk1 + pk2] = HstiffGen(point1, point2, webPoints1, webPoints2, hstiffLayout[i], pk1, pk2);
+                let dia = HstiffGenV2(point1, point2, webPoints1, webPoints2, webSide1, webSide2, hstiffLayout[i], pk1, pk2);
+                result["children"].push(...dia.children);
+                result["parent"].push(...dia.parent);
+            }
         }
     }
-  }
     return result;
     // return result;
 }
 
-export function HstiffGenV2(point1, point2, webPoints1, webPoints2, webSide1, webSide2,hstiffLayout, pk1, pk2) {
+export function HstiffGenV2(point1, point2, webPoints1, webPoints2, webSide1, webSide2, hstiffLayout, pk1, pk2) {
     const startOffset = hstiffLayout[2] * 1;
     const endOffset = hstiffLayout[3] * 1;
     const width = hstiffLayout[4] * 1;
@@ -543,20 +624,12 @@ export function HstiffGenV2(point1, point2, webPoints1, webPoints2, webSide1, we
     const lcot2 = (tl2.x - bl2.x) / (tl2.y - bl2.y);
     const rcot2 = (tr2.x - br2.x) / (tr2.y - br2.y);
 
-    let lnode1 = isTop
-        ? { x: tl1.x - lcot1 * offset1, y: tl1.y - offset1 }
-        : { x: bl1.x + lcot1 * offset1, y: bl1.y + offset1 };
-    let lnode2 = isTop
-        ? { x: tl2.x - lcot2 * offset2, y: tl2.y - offset2 }
-        : { x: bl2.x + lcot2 * offset2, y: bl2.y + offset2 };
+    let lnode1 = isTop ? { x: tl1.x - lcot1 * offset1, y: tl1.y - offset1 } : { x: bl1.x + lcot1 * offset1, y: bl1.y + offset1 };
+    let lnode2 = isTop ? { x: tl2.x - lcot2 * offset2, y: tl2.y - offset2 } : { x: bl2.x + lcot2 * offset2, y: bl2.y + offset2 };
     let lgn1 = PointToSkewedGlobal(lnode1, point1); //leftGlobalNode
     let lgn2 = PointToSkewedGlobal(lnode2, point2);
-    let rnode1 = isTop
-        ? { x: tr1.x - rcot1 * offset1, y: tr1.y - offset1 }
-        : { x: br1.x + rcot1 * offset1, y: br1.y + offset1 };
-    let rnode2 = isTop
-        ? { x: tr2.x - rcot2 * offset2, y: tr2.y - offset2 }
-        : { x: br2.x + rcot2 * offset2, y: br2.y + offset2 };
+    let rnode1 = isTop ? { x: tr1.x - rcot1 * offset1, y: tr1.y - offset1 } : { x: br1.x + rcot1 * offset1, y: br1.y + offset1 };
+    let rnode2 = isTop ? { x: tr2.x - rcot2 * offset2, y: tr2.y - offset2 } : { x: br2.x + rcot2 * offset2, y: br2.y + offset2 };
     let rgn1 = PointToSkewedGlobal(rnode1, point1); //rightGlobalNode
     let rgn2 = PointToSkewedGlobal(rnode2, point2);
     let lvec = [lgn2.x - lgn1.x, lgn2.y - lgn1.y, lgn2.z - lgn1.z];
@@ -571,20 +644,30 @@ export function HstiffGenV2(point1, point2, webPoints1, webPoints2, webSide1, we
     let rRotY = Math.atan(rcot1);
 
     let lCenterPoint = {
-        ...(new RefPoint(new Point((lgn1.x + lgn2.x) / 2,(lgn1.y + lgn2.y) / 2,(lgn1.z + lgn2.z) / 2,), new Point(lvec[1] / lLength2D, -lvec[0] / lLength2D), lRotX, lRotY)),
+        ...new RefPoint(
+            new Point((lgn1.x + lgn2.x) / 2, (lgn1.y + lgn2.y) / 2, (lgn1.z + lgn2.z) / 2),
+            new Point(lvec[1] / lLength2D, -lvec[0] / lLength2D),
+            lRotX,
+            lRotY
+        ),
         offset: point1.offset + (lnode1.x + lnode2.x) / 2,
         girderStation: (point1.girderStation + point2.girderStation) / 2,
         dz: (lgn1.dz + lgn2.dz) / 2,
         gradientX: (point1.gradientX + point2.gradientX) / 2,
     };
     let rCenterPoint = {
-        ...(new RefPoint(new Point((rgn1.x + rgn2.x) / 2,(rgn1.y + rgn2.y) / 2,(rgn1.z + rgn2.z) / 2,), new Point(rvec[1] / rLength2D, -rvec[0] / rLength2D), rRotX, rRotY)),
+        ...new RefPoint(
+            new Point((rgn1.x + rgn2.x) / 2, (rgn1.y + rgn2.y) / 2, (rgn1.z + rgn2.z) / 2),
+            new Point(rvec[1] / rLength2D, -rvec[0] / rLength2D),
+            rRotX,
+            rRotY
+        ),
         offset: point1.offset + (rnode1.x + rnode2.x) / 2,
         girderStation: (point1.girderStation + point2.girderStation) / 2,
         dz: (rgn1.dz + rgn2.dz) / 2,
         gradientX: (point1.gradientX + point2.gradientX) / 2,
     };
-    
+
     let lPlate = [
         { x: 0, y: -lLength / 2 + startOffset },
         { x: 0, y: lLength / 2 - endOffset },
@@ -604,115 +687,141 @@ export function HstiffGenV2(point1, point2, webPoints1, webPoints2, webSide1, we
     let partName = pk1 + pk2;
     let name2 = isTop ? "Top" : "Bottom";
 
-    result["children"].push(new Extrude(lPlate, thickness, {refPoint : lCenterPoint}, "steelBox",
-        { part: partName, key: "left" + name2, girder: point1.girderNum, seg: point1.segNum }
-        ))
-    result["children"].push(new Extrude(rPlate, thickness, {refPoint : rCenterPoint}, "steelBox",
-        { part: partName, key: "right" + name2, girder: point1.girderNum, seg: point1.segNum }
-        ))
+    result["children"].push(
+        new Extrude(lPlate, thickness, { refPoint: lCenterPoint }, "steelBox", {
+            part: partName,
+            key: "left" + name2,
+            girder: point1.girderNum,
+            seg: point1.segNum,
+        })
+    );
+    result["children"].push(
+        new Extrude(rPlate, thickness, { refPoint: rCenterPoint }, "steelBox", {
+            part: partName,
+            key: "right" + name2,
+            girder: point1.girderNum,
+            seg: point1.segNum,
+        })
+    );
 
     return result;
 }
 
-export function JackupStiffDictV2(gridPoint,
+export function JackupStiffDictV2(
+    gridPoint,
     sectionPointDict,
-    jackupData, // position, layoutList, length, height, thickness, chamfer
-  ) {
-    let result = {parent : [], children : []}
+    jackupData // position, layoutList, length, height, thickness, chamfer
+) {
+    let result = { parent: [], children: [] };
     for (let i in jackupData) {
-      let gridkey = jackupData[i][0]
-      let webPoints = sectionPointDict[gridkey].forward.web
-      let dia = jackup0V2(webPoints, gridPoint[gridkey], jackupData[i], gridkey, i);
-      result["children"].push(...dia.children)
-      result["parent"].push(...dia.parent)
+        let gridkey = jackupData[i][0];
+        let webPoints = sectionPointDict[gridkey].forward.web;
+        let dia = jackup0V2(webPoints, gridPoint[gridkey], jackupData[i], gridkey, i);
+        result["children"].push(...dia.children);
+        result["parent"].push(...dia.parent);
     }
-    return result
-  }
-  
-  export function jackup0V2(webPoints, point, jackupData, gridkey, sectionNum) {
+    return result;
+}
+
+export function jackup0V2(webPoints, point, jackupData, gridkey, sectionNum) {
     //ds 입력변수
-    let result = { parent : [], children : []};
-    let layout = []
-    let l1 = jackupData[1].split(',');
-    l1.forEach(elem => layout.push(elem.trim() * 1))
-    let length = jackupData[2]*1??0;
-    let height = jackupData[3]*1??0;
-    let thickness = jackupData[4]*1??0;
-    let chamfer = jackupData[5]*1??0;
+    let result = { parent: [], children: [] };
+    let layout = [];
+    let l1 = jackupData[1].split(",");
+    l1.forEach(elem => layout.push(elem.trim() * 1));
+    let length = jackupData[2] * 1 ?? 0;
+    let height = jackupData[3] * 1 ?? 0;
+    let thickness = jackupData[4] * 1 ?? 0;
+    let chamfer = jackupData[5] * 1 ?? 0;
     //  임시 입력변수
-  
+
     const bl = webPoints[0][0];
     const bl2 = webPoints[0][3];
     const tl = webPoints[0][1];
     const br = webPoints[1][0];
     const br2 = webPoints[1][3];
-  
+
     const tr = webPoints[1][1];
-    const lwCot = (tl.x - bl.x) / (tl.y - bl.y)
-    const rwCot = (tr.x - br.x) / (tr.y - br.y)
+    const lwCot = (tl.x - bl.x) / (tl.y - bl.y);
+    const rwCot = (tr.x - br.x) / (tr.y - br.y);
     // const gradient = (tr.y - tl.y) / (tr.x - tl.x)
-  
+
     let upperPoints = [
-      { x: bl.x + lwCot * length, y: bl.y + length },
-      { x: br.x + rwCot * length, y: br.y + length },
-      { x: bl2.x + lwCot * length, y: bl2.y + length },
-      { x: br2.x + rwCot * length, y: br2.y + length }
-  
+        { x: bl.x + lwCot * length, y: bl.y + length },
+        { x: br.x + rwCot * length, y: br.y + length },
+        { x: bl2.x + lwCot * length, y: bl2.y + length },
+        { x: br2.x + rwCot * length, y: br2.y + length },
     ];
-    let left = PlateRestPoint(bl, upperPoints[0], 0, 0, height)
+    let left = PlateRestPoint(bl, upperPoints[0], 0, 0, height);
     let leftPoints = [];
-    leftPoints.push(left[0])
+    leftPoints.push(left[0]);
     leftPoints.push(left[1]);
     leftPoints.push(...scallop(left[1], left[2], left[3], chamfer, 1));
-    leftPoints.push(left[3])
-    let right = PlateRestPoint(br, upperPoints[1], 0, 0, -height)
+    leftPoints.push(left[3]);
+    let right = PlateRestPoint(br, upperPoints[1], 0, 0, -height);
     let rightPoints = [];
-    rightPoints.push(right[0])
+    rightPoints.push(right[0]);
     rightPoints.push(right[1]);
     rightPoints.push(...scallop(right[1], right[2], right[3], chamfer, 1));
-    rightPoints.push(right[3])
-    let left1 = PlateRestPoint(bl2, upperPoints[2], 0, 0, -height)
+    rightPoints.push(right[3]);
+    let left1 = PlateRestPoint(bl2, upperPoints[2], 0, 0, -height);
     let leftPoints2 = [];
-    leftPoints2.push(left1[0])
+    leftPoints2.push(left1[0]);
     leftPoints2.push(left1[1]);
     leftPoints2.push(...scallop(left1[1], left1[2], left1[3], chamfer, 1));
-    leftPoints2.push(left1[3])
-    let right1 = PlateRestPoint(br2, upperPoints[3], 0, 0, height)
+    leftPoints2.push(left1[3]);
+    let right1 = PlateRestPoint(br2, upperPoints[3], 0, 0, height);
     let rightPoints2 = [];
-    rightPoints2.push(right1[0])
+    rightPoints2.push(right1[0]);
     rightPoints2.push(right1[1]);
     rightPoints2.push(...scallop(right1[1], right1[2], right1[3], chamfer, 1));
-    rightPoints2.push(right1[3])
-    let partKey = gridkey + "J"+ sectionNum
-    let ref = toRefPoint(point,true)
+    rightPoints2.push(right1[3]);
+    let partKey = gridkey + "J" + sectionNum;
+    let ref = toRefPoint(point, true);
     for (let i in layout) {
-      let newPoint = new RefPoint(PointToSkewedGlobal({ x: 0, y: 0, z : -layout[i] }, point), ref.xAxis, Math.PI/2)
-      // result["left1" + i] = vPlateGen(leftPoints, newPoint, thickness, [], 15, null, null, [], null, [1, 2, 4, 0], [0, 4])
-      // result["right1" + i] = vPlateGen(rightPoints, newPoint, thickness, [], 15, null, null, [], null, null, [0, 4])
-      let leftJackup = vPlateGenV2(leftPoints, point, [], 15, null, null)
-      let rightJackup = vPlateGenV2(rightPoints, point, [], 15, null, null)
-      result["children"].push(
-        new Extrude(leftJackup, thickness, {refPoint : newPoint}, "steelBox", 
-        { part: partKey, key: "left1" + i , girder : point.girderNum, seg : point.segNum}),
-        new Extrude(rightJackup, thickness, {refPoint : newPoint}, "steelBox", 
-        { part: partKey, key: "right1" + i , girder : point.girderNum, seg : point.segNum}),
-        )
-      if (jackupData[6]) {
-        let leftJackup2 = vPlateGenV2(leftPoints2, point, [], 15, null, null)
-        let rightJackup2 = vPlateGenV2(rightPoints2, point, [], 15, null, null)
+        let newPoint = new RefPoint(PointToSkewedGlobal({ x: 0, y: 0, z: -layout[i] }, point), ref.xAxis, Math.PI / 2);
+        // result["left1" + i] = vPlateGen(leftPoints, newPoint, thickness, [], 15, null, null, [], null, [1, 2, 4, 0], [0, 4])
+        // result["right1" + i] = vPlateGen(rightPoints, newPoint, thickness, [], 15, null, null, [], null, null, [0, 4])
+        let leftJackup = vPlateGenV2(leftPoints, point, [], 15, null, null);
+        let rightJackup = vPlateGenV2(rightPoints, point, [], 15, null, null);
         result["children"].push(
-            new Extrude(leftJackup2, thickness, {refPoint : newPoint}, "steelBox", 
-            { part: partKey, key: "left2" + i , girder : point.girderNum, seg : point.segNum}),
-            new Extrude(rightJackup2, thickness, {refPoint : newPoint}, "steelBox", 
-            { part: partKey, key: "right2" + i , girder : point.girderNum, seg : point.segNum}),
-            )
-      }
+            new Extrude(leftJackup, thickness, { refPoint: newPoint }, "steelBox", {
+                part: partKey,
+                key: "left1" + i,
+                girder: point.girderNum,
+                seg: point.segNum,
+            }),
+            new Extrude(rightJackup, thickness, { refPoint: newPoint }, "steelBox", {
+                part: partKey,
+                key: "right1" + i,
+                girder: point.girderNum,
+                seg: point.segNum,
+            })
+        );
+        if (jackupData[6]) {
+            let leftJackup2 = vPlateGenV2(leftPoints2, point, [], 15, null, null);
+            let rightJackup2 = vPlateGenV2(rightPoints2, point, [], 15, null, null);
+            result["children"].push(
+                new Extrude(leftJackup2, thickness, { refPoint: newPoint }, "steelBox", {
+                    part: partKey,
+                    key: "left2" + i,
+                    girder: point.girderNum,
+                    seg: point.segNum,
+                }),
+                new Extrude(rightJackup2, thickness, { refPoint: newPoint }, "steelBox", {
+                    part: partKey,
+                    key: "right2" + i,
+                    girder: point.girderNum,
+                    seg: point.segNum,
+                })
+            );
+        }
     }
-    return result
-  }
+    return result;
+}
 
-  export function StudPoint(girderStation, sectionPointDict, topStudData, bottomStudData) {
-    const studInfo = topStudData.studInfo
+export function StudPoint(girderStation, sectionPointDict, topStudData, bottomStudData, crossKeys) {
+    const studInfo = topStudData.studInfo;
     // {
     //     "dia": 25,
     //     "height": 150,
@@ -721,107 +830,109 @@ export function JackupStiffDictV2(gridPoint,
     //     "distance": 100,
     //     "edgeDistance" : 100
     // }
-    const topPlateStudLayout = topStudData.layout
+    const topPlateStudLayout = topStudData.layout;
     let studList = [];
     let segIndex = {};
     for (let i in topPlateStudLayout) {
-        let ts = { //...topPlateStudLayout[i] };
+        let ts = {
+            //...topPlateStudLayout[i] };
             start: topPlateStudLayout[i][0],
             end: topPlateStudLayout[i][1],
             startOffset: topPlateStudLayout[i][2],
             endOffset: topPlateStudLayout[i][3],
             spacing: topPlateStudLayout[i][4],
-            layout: topPlateStudLayout[i][5]
+            layout: topPlateStudLayout[i][5],
         };
         // let layout = ts.layout.split(',')
-        const sp = ts.start
-        let girderIndex = sp.substr(1, 1) * 1 - 1
+        const sp = ts.start;
+        let girderIndex = sp.substr(1, 1) * 1 - 1; //거더개수 9개 최대적용
         if (segIndex.hasOwnProperty(girderIndex)) {
             if (sp.includes("SP")) {
-                segIndex[girderIndex] += 1
+                segIndex[girderIndex] += 1;
             }
         } else {
-            segIndex[girderIndex] = 1
+            segIndex[girderIndex] = 1;
         }
 
-        let gridKeys = []
-        let gridPoints = []
-        let cr = false
+        let gridKeys = [];
+        let gridPoints = [];
+        let cr = false;
         let dummyStation = Infinity;
         for (let j in girderStation[girderIndex]) {
-
             if (girderStation[girderIndex][j].key === ts.start) {
-                cr = true
+                cr = true;
             }
             if (dummyStation !== girderStation[girderIndex][j].station) {
-                if (cr) {
-                    gridKeys.push(girderStation[girderIndex][j].key)
-                    gridPoints.push(girderStation[girderIndex][j].point)
+                if (cr && !crossKeys.includes(girderStation[girderIndex][j].key)) {
+                    gridKeys.push(girderStation[girderIndex][j].key);
+                    gridPoints.push(girderStation[girderIndex][j].point);
                 }
             }
-            if ((girderStation[girderIndex][j].key === ts.end)) {
-                cr = false
+            if (girderStation[girderIndex][j].key === ts.end) {
+                cr = false;
             }
             //
-            if (cr){
-                dummyStation = girderStation[girderIndex][j].station
+            if (cr) {
+                dummyStation = girderStation[girderIndex][j].station;
             }
         }
         let totalLength = 0;
         let segLength = 0;
-       
+        let studObj = [];
         for (let j = 0; j < gridKeys.length - 1; j++) {
-            let points = [];
-            let sidePoints = [];
             let spts = [];
             let epts = [];
             let sideStartY = sectionPointDict[gridKeys[j]].forward.uflangeSide[1];
             let sideEndY = sectionPointDict[gridKeys[j + 1]].backward.uflangeSide[1];
-            
+
             for (let p = 0; p < 3; p++) {
                 let startFlangePoints = sectionPointDict[gridKeys[j]].forward.uflange[p];
                 let endFlangePoints = sectionPointDict[gridKeys[j + 1]].backward.uflange[p];
                 if (startFlangePoints.length > 0 && endFlangePoints.length > 0) {
-                    let startNode = startFlangePoints[3]
-                    let endNode = endFlangePoints[3]
-                    let startW = Math.abs(startFlangePoints[3].x - startFlangePoints[2].x)
-                    let endW = Math.abs(endFlangePoints[3].x - endFlangePoints[2].x)
+                    let startNode = startFlangePoints[3];
+                    let endNode = endFlangePoints[3];
+                    let startW = Math.abs(startFlangePoints[3].x - startFlangePoints[2].x);
+                    let endW = Math.abs(endFlangePoints[3].x - endFlangePoints[2].x);
                     let sign = p === 1 ? -1 : 1;
                     // 효명 스터드배치를 위한 임시코드 ==>
-                    if (p < 2) { //개구형 구간의 경우
+                    if (p < 2) {
+                        //개구형 구간의 경우
                         let dx = [
-                            studInfo.edgeDistance, 
-                            studInfo.edgeDistance + studInfo.distance, 
-                            studInfo.edgeDistance + 2 * studInfo.distance, 
-                            (studInfo.edgeDistance + 2 * studInfo.distance) * 0.6 + (startW - studInfo.edgeDistance) * 0.4, 
-                            startW - studInfo.edgeDistance]
+                            studInfo.edgeDistance,
+                            studInfo.edgeDistance + studInfo.distance,
+                            studInfo.edgeDistance + 2 * studInfo.distance,
+                            (studInfo.edgeDistance + 2 * studInfo.distance) * 0.6 + (startW - studInfo.edgeDistance) * 0.4,
+                            startW - studInfo.edgeDistance,
+                        ];
                         let dx2 = [
-                            studInfo.edgeDistance, 
-                            studInfo.edgeDistance + studInfo.distance, 
-                            studInfo.edgeDistance + 2 * studInfo.distance, 
-                            (studInfo.edgeDistance + 2 * studInfo.distance) * 0.6 + (endW - studInfo.edgeDistance) * 0.4, 
-                            endW - studInfo.edgeDistance]
+                            studInfo.edgeDistance,
+                            studInfo.edgeDistance + studInfo.distance,
+                            studInfo.edgeDistance + 2 * studInfo.distance,
+                            (studInfo.edgeDistance + 2 * studInfo.distance) * 0.6 + (endW - studInfo.edgeDistance) * 0.4,
+                            endW - studInfo.edgeDistance,
+                        ];
                         for (let k = 0; k < 5; k++) {
                             spts.push({ x: startNode.x + sign * dx[k], y: startNode.y + sign * dx[k] * gridPoints[j].gradientY });
                             epts.push({ x: endNode.x + sign * dx2[k], y: endNode.y + sign * dx2[k] * gridPoints[j + 1].gradientY });
                         }
-                    } else { //박스구간인 경우
-                        let startNode2 = startFlangePoints[2]
-                        let endNode2 = endFlangePoints[2]
+                    } else {
+                        //박스구간인 경우
+                        let startNode2 = startFlangePoints[2];
+                        let endNode2 = endFlangePoints[2];
                         let dx = [
-                            studInfo.edgeDistance, 
-                            studInfo.edgeDistance + studInfo.distance, 
-                            studInfo.edgeDistance + 2 * studInfo.distance, 
-                            startW / 2 * 0.4  + (studInfo.edgeDistance + 2 * studInfo.distance) * 0.6, 
-                            startW / 2 * 0.8  + (studInfo.edgeDistance + 2 * studInfo.distance) * 0.2, 
-                        ]
+                            studInfo.edgeDistance,
+                            studInfo.edgeDistance + studInfo.distance,
+                            studInfo.edgeDistance + 2 * studInfo.distance,
+                            (startW / 2) * 0.4 + (studInfo.edgeDistance + 2 * studInfo.distance) * 0.6,
+                            (startW / 2) * 0.8 + (studInfo.edgeDistance + 2 * studInfo.distance) * 0.2,
+                        ];
                         let dx2 = [
-                            studInfo.edgeDistance, 
-                            studInfo.edgeDistance + studInfo.distance, 
-                            studInfo.edgeDistance + 2 * studInfo.distance, 
-                            endW / 2 * 0.4  + (studInfo.edgeDistance + 2 * studInfo.distance) * 0.6, 
-                            endW / 2 * 0.8  + (studInfo.edgeDistance + 2 * studInfo.distance) * 0.2, 
-                        ]
+                            studInfo.edgeDistance,
+                            studInfo.edgeDistance + studInfo.distance,
+                            studInfo.edgeDistance + 2 * studInfo.distance,
+                            (endW / 2) * 0.4 + (studInfo.edgeDistance + 2 * studInfo.distance) * 0.6,
+                            (endW / 2) * 0.8 + (studInfo.edgeDistance + 2 * studInfo.distance) * 0.2,
+                        ];
                         for (let k = 0; k < 5; k++) {
                             spts.push({ x: startNode.x + dx[k], y: startNode.y + dx[k] * gridPoints[j].gradientY });
                             spts.push({ x: startNode2.x - dx[k], y: startNode2.y - dx[k] * gridPoints[j].gradientY });
@@ -832,71 +943,84 @@ export function JackupStiffDictV2(gridPoint,
                 }
             }
 
-            spts.sort( function(a,b){ return a.x < b.x? -1:1})
-            epts.sort( function(a,b){ return a.x < b.x? -1:1})
+            spts.sort(function (a, b) {
+                return a.x < b.x ? -1 : 1;
+            });
+            epts.sort(function (a, b) {
+                return a.x < b.x ? -1 : 1;
+            });
 
             let globalSpts = [];
             let globalEpts = [];
 
-            spts.forEach(function (elem) { globalSpts.push(PointToSkewedGlobal(elem, gridPoints[j])) })
-            epts.forEach(function (elem) { globalEpts.push(PointToSkewedGlobal(elem, gridPoints[j + 1])) })
-            let sideSpt = { x: gridPoints[j].girderStation, y: sideStartY, z: 0 }
-            let sideEpt = { x: gridPoints[j + 1].girderStation, y: sideEndY, z: 0 }
+            spts.forEach(function (elem) {
+                globalSpts.push(PointToSkewedGlobal(elem, gridPoints[j]));
+            });
+            epts.forEach(function (elem) {
+                globalEpts.push(PointToSkewedGlobal(elem, gridPoints[j + 1]));
+            });
+            let sideSpt = { x: gridPoints[j].girderStation, y: sideStartY, z: 0 };
+            let sideEpt = { x: gridPoints[j + 1].girderStation, y: sideEndY, z: 0 };
 
-            
-            segLength = Math.max(Math.sqrt((globalSpts[0].x - globalEpts[0].x) ** 2 + (globalSpts[0].y - globalEpts[0].y) ** 2),
-            Math.sqrt((globalSpts[globalSpts.length-1].x - globalEpts[globalEpts.length-1].x) ** 2 + (globalSpts[globalSpts.length-1].y - globalEpts[globalEpts.length-1].y) ** 2))
-            
-            
-
-            totalLength += segLength
-            let remainder = (totalLength - ts.startOffset) % ts.spacing;
-            let sNum = segLength - remainder > 0 ? Math.floor((segLength - remainder) / ts.spacing) + 1 : 0
-            let x = 0;
-            for (let k = 0; k < sNum; k++) {
-                if (j < gridKeys.length - 2 || k > 0) {
-                    x = remainder + k * ts.spacing;
-                } else {
-                    x = ts.endOffset;
-                }
-                let tempPoints = []
-                for (let l = 0; l < spts.length; l++) { // 항상 10개가 나올 것임.
-                    tempPoints.push({
-                        x: x / segLength * globalSpts[l].x + (segLength - x) / segLength * globalEpts[l].x,
-                        y: x / segLength * globalSpts[l].y + (segLength - x) / segLength * globalEpts[l].y,
-                        z: x / segLength * globalSpts[l].z + (segLength - x) / segLength * globalEpts[l].z
-                    })
-                }
-                points.push(tempPoints[0])
-                for (let t =0; t<tempPoints.length -1; t++){
-                    if (TwoPointsLength(tempPoints[t], tempPoints[t+1]) > studInfo.distance*0.99){
-                        points.push(tempPoints[t+1]) 
-                    }
-                }
-                sidePoints.push(
-                    {
-                        x: x / segLength * sideSpt.x + (segLength - x) / segLength * sideEpt.x,
-                        y: x / segLength * sideSpt.y + (segLength - x) / segLength * sideEpt.y,
-                        z: x / segLength * sideSpt.z + (segLength - x) / segLength * sideEpt.z
-                    }
+            segLength = Math.max(
+                Math.sqrt((globalSpts[0].x - globalEpts[0].x) ** 2 + (globalSpts[0].y - globalEpts[0].y) ** 2),
+                Math.sqrt(
+                    (globalSpts[globalSpts.length - 1].x - globalEpts[globalEpts.length - 1].x) ** 2 +
+                        (globalSpts[globalSpts.length - 1].y - globalEpts[globalEpts.length - 1].y) ** 2
                 )
+            );
 
+            totalLength += segLength;
+            studObj.push({ globalSpts, globalEpts, segLength, numLength: totalLength });
+        }
+        let xList = DivideRebarSpacing(ts.startOffset, totalLength - ts.endOffset, ts.spacing, 1);
+        let studPoints = [];
+        for (let x0 of xList) {
+            let x = 0;
+            let globalSpts = [];
+            let globalEpts = [];
+            let segLength = 0;
+            for (let obj of studObj) {
+                if (obj.numLength - x0 >= 0) {
+                    x = obj.numLength - x0;
+                    globalSpts = obj.globalSpts;
+                    globalEpts = obj.globalEpts;
+                    segLength = obj.segLength;
+                    break;
+                }
             }
-            let groupName = "G" + (girderIndex + 1).toString() + "SEG" + segIndex[girderIndex].toString()
-            if (points.length > 0) {
-                studList.push(
-                    new Stud(0,0,0, points, studInfo, {}, 'stud', {
-                        key: groupName, part: gridKeys[j] + gridKeys[j+1],
-                        girder: girderIndex + 1,
-                        seg: segIndex[girderIndex],
-                        category: "topFlange"
-                    })
-                    )
+            for (let l = 0; l < globalSpts.length; l++) {
+                // 항상 10개가 나올 것임.
+                let point = {
+                    x: (x / segLength) * globalSpts[l].x + ((segLength - x) / segLength) * globalEpts[l].x,
+                    y: (x / segLength) * globalSpts[l].y + ((segLength - x) / segLength) * globalEpts[l].y,
+                    z: (x / segLength) * globalSpts[l].z + ((segLength - x) / segLength) * globalEpts[l].z,
+                };
+                if (studPoints.length > 0) {
+                    if (TwoPointsLength(studPoints[studPoints.length - 1], point) > studInfo.distance * 0.99) {
+                        studPoints.push(point);
+                    }
+                } else {
+                    studPoints.push(point);
+                }
             }
         }
+        let groupName = "G" + (girderIndex + 1).toString() + "SEG" + segIndex[girderIndex].toString();
+        if (studPoints.length > 0) {
+            studList.push(
+                new Stud(0, 0, 0, studPoints, studInfo, {}, "stud", {
+                    key: groupName,
+                    part: ts.start + ts.end,
+                    girder: girderIndex + 1,
+                    seg: segIndex[girderIndex],
+                    category: "topFlange",
+                })
+            );
+        }
     }
-    let bottomStud = BottomStudPoint(girderStation, sectionPointDict, bottomStudData)
-    studList.push(...bottomStud.studList)
+
+    let bottomStud = BottomStudPoint(girderStation, sectionPointDict, bottomStudData);
+    studList.push(...bottomStud.studList);
 
     let result = {
         parent: [
@@ -911,7 +1035,7 @@ export function JackupStiffDictV2(gridPoint,
                     shMin: 100,
                     svB: 450,
                     svP: 450,
-                }
+                },
             },
             {
                 name: "stud2",
@@ -922,14 +1046,14 @@ export function JackupStiffDictV2(gridPoint,
                     shMin: 75,
                     sv: 450,
                 },
-            }
+            },
         ],
         children: studList,
         // dimension: bottomStud.dimension,
         // section: bottomStud.section
-    }
+    };
 
-    return result //{ studList, studDict: { ...studDict, ...bottomStud.studDict } }
+    return result; //{ studList, studDict: { ...studDict, ...bottomStud.studDict } }
 }
 
 export function BottomStudPoint(girderStation, sectionPointDict, bottomStudData) {
@@ -938,7 +1062,7 @@ export function BottomStudPoint(girderStation, sectionPointDict, bottomStudData)
     let studDict = {};
     let section = [];
     let dimension = [];
-    const studInfo = bottomStudData.studInfo
+    const studInfo = bottomStudData.studInfo;
     // {
     //     "dia": 22,
     //     "height": 100,
@@ -948,45 +1072,46 @@ export function BottomStudPoint(girderStation, sectionPointDict, bottomStudData)
     //     "spliceOffset": 400,
     //     "spacing": 400
     // }
-    const layout = bottomStudData.layout
+    const layout = bottomStudData.layout;
     // [150, 225, 300, 500, 700, 900]//[200, 500]; //웹으로부터 2개씩
-    const sideLayout = bottomStudData.sideLayout
+    const sideLayout = bottomStudData.sideLayout;
     // [150, 300];
-    const diaPhragmLayout = bottomStudData.diaPhragmLayout
+    const diaPhragmLayout = bottomStudData.diaPhragmLayout;
     // 150; //바닥면 기준으로 150mm 이격
 
-    let studPoints = []
+    let studPoints = [];
     for (let i in girderStation) {
-        let cr = false
+        let cr = false;
         let subGrid = [];
-        let girder = i * 1 + 1
+        let girder = i * 1 + 1;
         let seg = 1;
         let span = 0;
         for (let j in girderStation[i]) {
-
-            let key = girderStation[i][j].key
-            let point = girderStation[i][j].point
+            let key = girderStation[i][j].key;
+            let point = girderStation[i][j].point;
             let bool = ["D", "V", "SP"].some(el => key.includes(el));
-            if (key.includes("SP")) { seg += 1 }
-            if (!key.includes("SP") && key.includes("S")) { span += 1 }
+            if (key.includes("SP")) {
+                seg += 1;
+            }
+            if (!key.includes("SP") && key.includes("S")) {
+                span += 1;
+            }
             if (sectionPointDict[key].backward.input.Tcl === 0 && sectionPointDict[key].forward.input.Tcl > 0) {
-                cr = true
+                cr = true;
             }
             if (bool && cr) {
-                subGrid.push({ girder, seg, span, key, point })
+                subGrid.push({ girder, seg, span, key, point });
             }
             if (cr && bool && sectionPointDict[key].forward.input.Tcl === 0) {
-                cr = false
-                studPoints.push(subGrid)
+                cr = false;
+                studPoints.push(subGrid);
                 subGrid = [];
             }
-
         }
-
     }
     for (let i in studPoints) {
         let segLength = 0;
-        let partName = "G" + studPoints[i][0].girder.toString() + "lConc" + String(i * 1 + 1)
+        let partName = "G" + studPoints[i][0].girder.toString() + "lConc" + String(i * 1 + 1);
 
         for (let j = 0; j < studPoints[i].length - 1; j++) {
             let points = [];
@@ -1006,24 +1131,34 @@ export function BottomStudPoint(girderStation, sectionPointDict, bottomStudData)
             let depts = []; //다이아프램 스터드
             let skey = studPoints[i][j].key;
             let ekey = studPoints[i][j + 1].key;
-            let startPoint = studPoints[i][j].point
-            let endPoint = studPoints[i][j + 1].point
+            let startPoint = studPoints[i][j].point;
+            let endPoint = studPoints[i][j + 1].point;
 
-            let startLefttan = (sectionPointDict[skey].forward.web[0][1].x - sectionPointDict[skey].forward.web[0][0].x) / (sectionPointDict[skey].forward.web[0][1].y - sectionPointDict[skey].forward.web[0][0].y);
-            let startRighttan = (sectionPointDict[skey].forward.web[1][1].x - sectionPointDict[skey].forward.web[1][0].x) / (sectionPointDict[skey].forward.web[1][1].y - sectionPointDict[skey].forward.web[1][0].y)
-            let endLefttan = (sectionPointDict[ekey].backward.web[0][1].x - sectionPointDict[ekey].backward.web[0][0].x) / (sectionPointDict[ekey].backward.web[0][1].y - sectionPointDict[ekey].backward.web[0][0].y);
-            let endRighttan = (sectionPointDict[ekey].backward.web[1][1].x - sectionPointDict[ekey].backward.web[1][0].x) / (sectionPointDict[ekey].backward.web[1][1].y - sectionPointDict[ekey].backward.web[1][0].y)
+            let startLefttan =
+                (sectionPointDict[skey].forward.web[0][1].x - sectionPointDict[skey].forward.web[0][0].x) /
+                (sectionPointDict[skey].forward.web[0][1].y - sectionPointDict[skey].forward.web[0][0].y);
+            let startRighttan =
+                (sectionPointDict[skey].forward.web[1][1].x - sectionPointDict[skey].forward.web[1][0].x) /
+                (sectionPointDict[skey].forward.web[1][1].y - sectionPointDict[skey].forward.web[1][0].y);
+            let endLefttan =
+                (sectionPointDict[ekey].backward.web[0][1].x - sectionPointDict[ekey].backward.web[0][0].x) /
+                (sectionPointDict[ekey].backward.web[0][1].y - sectionPointDict[ekey].backward.web[0][0].y);
+            let endRighttan =
+                (sectionPointDict[ekey].backward.web[1][1].x - sectionPointDict[ekey].backward.web[1][0].x) /
+                (sectionPointDict[ekey].backward.web[1][1].y - sectionPointDict[ekey].backward.web[1][0].y);
 
-            let lRad = Math.atan(startLefttan)
-            let rRad = Math.atan(startRighttan)
-            let rot = Math.atan2(studPoints[i][j + 1].point.y - studPoints[i][j].point.y, studPoints[i][j + 1].point.x - studPoints[i][j].point.x) - Math.PI / 2
+            let lRad = Math.atan(startLefttan);
+            let rRad = Math.atan(startRighttan);
+            let rot =
+                Math.atan2(studPoints[i][j + 1].point.y - studPoints[i][j].point.y, studPoints[i][j + 1].point.x - studPoints[i][j].point.x) -
+                Math.PI / 2;
             // let rot1 = Math.atan2(studPoints[i][j].point.normalSin, studPoints[i][j].point.normalCos)
             // let rot2 = Math.atan2(studPoints[i][j + 1].point.normalSin, studPoints[i][j + 1].point.normalCos)
 
-            let startLeftPoint = sectionPointDict[skey].forward.web[0][0]
-            let startRightPoint = sectionPointDict[skey].backward.web[1][0]
-            let endLeftPoint = sectionPointDict[ekey].forward.web[0][0]
-            let endRightPoint = sectionPointDict[ekey].backward.web[1][0]
+            let startLeftPoint = sectionPointDict[skey].forward.web[0][0];
+            let startRightPoint = sectionPointDict[skey].backward.web[1][0];
+            let endLeftPoint = sectionPointDict[ekey].forward.web[0][0];
+            let endRightPoint = sectionPointDict[ekey].backward.web[1][0];
             let sideStartY = sectionPointDict[skey].forward.lflangeSide[0];
             let sideEndY = sectionPointDict[ekey].backward.lflangeSide[0];
 
@@ -1041,15 +1176,19 @@ export function BottomStudPoint(girderStation, sectionPointDict, bottomStudData)
                     depts.push({ x: endRightPoint.x - layout[l], y: endRightPoint.y + diaPhragmLayout });
                 }
             }
-            dspts.sort(function (a, b) { return a.x > b.x ? 1 : -1 })
-            depts.sort(function (a, b) { return a.x > b.x ? 1 : -1 })
+            dspts.sort(function (a, b) {
+                return a.x > b.x ? 1 : -1;
+            });
+            depts.sort(function (a, b) {
+                return a.x > b.x ? 1 : -1;
+            });
             for (let l in sideLayout) {
-                let h1 = sectionPointDict[skey].forward.input.Tcl - sideLayout[l]
-                let h2 = sectionPointDict[ekey].backward.input.Tcl - sideLayout[l]
-                lspts.push({ x: startLeftPoint.x + h1 * startLefttan, y: startLeftPoint.y + h1, h: h1 })
-                rspts.push({ x: startRightPoint.x + h1 * startRighttan, y: startRightPoint.y + h1, h: h1 })
-                lepts.push({ x: endLeftPoint.x + h2 * endLefttan, y: endLeftPoint.y + h2, h: h2 })
-                repts.push({ x: endRightPoint.x + h2 * endRighttan, y: endRightPoint.y + h2, h: h2 })
+                let h1 = sectionPointDict[skey].forward.input.Tcl - sideLayout[l];
+                let h2 = sectionPointDict[ekey].backward.input.Tcl - sideLayout[l];
+                lspts.push({ x: startLeftPoint.x + h1 * startLefttan, y: startLeftPoint.y + h1, h: h1 });
+                rspts.push({ x: startRightPoint.x + h1 * startRighttan, y: startRightPoint.y + h1, h: h1 });
+                lepts.push({ x: endLeftPoint.x + h2 * endLefttan, y: endLeftPoint.y + h2, h: h2 });
+                repts.push({ x: endRightPoint.x + h2 * endRighttan, y: endRightPoint.y + h2, h: h2 });
             }
 
             let globalSpts = [];
@@ -1057,159 +1196,178 @@ export function BottomStudPoint(girderStation, sectionPointDict, bottomStudData)
             let dGlobalSpts = [];
             let dGlobalEpts = [];
 
-            spts.forEach(function (elem) { globalSpts.push(PointToSkewedGlobal(elem, studPoints[i][j].point)) })
-            epts.forEach(function (elem) { globalEpts.push(PointToSkewedGlobal(elem, studPoints[i][j + 1].point)) })
-            dspts.forEach(function (elem) { dGlobalSpts.push(PointToSkewedGlobal(elem, studPoints[i][j].point)) })
-            depts.forEach(function (elem) { dGlobalEpts.push(PointToSkewedGlobal(elem, studPoints[i][j + 1].point)) })
-            dsSidePoints.push({ x: studPoints[i][j].point.girderStation, y: sideStartY + diaPhragmLayout, z: 0 })
-            deSidePoints.push({ x: studPoints[i][j + 1].point.girderStation, y: sideEndY + diaPhragmLayout, z: 0 })
+            spts.forEach(function (elem) {
+                globalSpts.push(PointToSkewedGlobal(elem, studPoints[i][j].point));
+            });
+            epts.forEach(function (elem) {
+                globalEpts.push(PointToSkewedGlobal(elem, studPoints[i][j + 1].point));
+            });
+            dspts.forEach(function (elem) {
+                dGlobalSpts.push(PointToSkewedGlobal(elem, studPoints[i][j].point));
+            });
+            depts.forEach(function (elem) {
+                dGlobalEpts.push(PointToSkewedGlobal(elem, studPoints[i][j + 1].point));
+            });
+            dsSidePoints.push({ x: studPoints[i][j].point.girderStation, y: sideStartY + diaPhragmLayout, z: 0 });
+            deSidePoints.push({ x: studPoints[i][j + 1].point.girderStation, y: sideEndY + diaPhragmLayout, z: 0 });
 
             let leftGlobalSpts = [];
             let leftGlobalEpts = [];
             let rightGlobalSpts = [];
             let rightGlobalEpts = [];
-            lspts.forEach(function (elem) { leftGlobalSpts.push({ ...PointToSkewedGlobal(elem, studPoints[i][j].point), h: elem.h }) })
-            lepts.forEach(function (elem) { leftGlobalEpts.push({ ...PointToSkewedGlobal(elem, studPoints[i][j + 1].point), h: elem.h }) })
-            rspts.forEach(function (elem) { rightGlobalSpts.push({ ...PointToSkewedGlobal(elem, studPoints[i][j].point), h: elem.h }) })
-            repts.forEach(function (elem) { rightGlobalEpts.push({ ...PointToSkewedGlobal(elem, studPoints[i][j + 1].point), h: elem.h }) })
+            lspts.forEach(function (elem) {
+                leftGlobalSpts.push({ ...PointToSkewedGlobal(elem, studPoints[i][j].point), h: elem.h });
+            });
+            lepts.forEach(function (elem) {
+                leftGlobalEpts.push({ ...PointToSkewedGlobal(elem, studPoints[i][j + 1].point), h: elem.h });
+            });
+            rspts.forEach(function (elem) {
+                rightGlobalSpts.push({ ...PointToSkewedGlobal(elem, studPoints[i][j].point), h: elem.h });
+            });
+            repts.forEach(function (elem) {
+                rightGlobalEpts.push({ ...PointToSkewedGlobal(elem, studPoints[i][j + 1].point), h: elem.h });
+            });
 
-            let sideSpt = { x: studPoints[i][j].point.girderStation, y: sideStartY, z: 0 }
-            let sideEpt = { x: studPoints[i][j + 1].point.girderStation, y: sideEndY, z: 0 }
+            let sideSpt = { x: studPoints[i][j].point.girderStation, y: sideStartY, z: 0 };
+            let sideEpt = { x: studPoints[i][j + 1].point.girderStation, y: sideEndY, z: 0 };
 
-            let startOffset = studInfo.endOffset
-            let endOffset = studInfo.endOffset
+            let startOffset = studInfo.endOffset;
+            let endOffset = studInfo.endOffset;
             if (skey.includes("SP")) {
                 // totalLength = 0;
-                startOffset = studInfo.spliceOffset
+                startOffset = studInfo.spliceOffset;
             }
             if (ekey.includes("SP")) {
-                endOffset = studInfo.spliceOffset
+                endOffset = studInfo.spliceOffset;
             }
             // totalLength += segLength
-            segLength = endPoint.girderStation - startPoint.girderStation
+            segLength = endPoint.girderStation - startPoint.girderStation;
             let remainder = (segLength - startOffset - endOffset) % studInfo.spacing;
-            let sNum = segLength - remainder > 0 ? Math.floor((segLength - startOffset - endOffset - remainder) / studInfo.spacing) + 2 : 0
+            let sNum = segLength - remainder > 0 ? Math.floor((segLength - startOffset - endOffset - remainder) / studInfo.spacing) + 2 : 0;
             let x = startOffset;
             for (let k = 0; k < sNum; k++) {
-
                 if (k === sNum - 1) {
-                    x = segLength - endOffset
+                    x = segLength - endOffset;
                 } else if (k > 0) {
-                    x = startOffset + (remainder / 2 + studInfo.spacing / 2) + (k - 1) * studInfo.spacing
+                    x = startOffset + (remainder / 2 + studInfo.spacing / 2) + (k - 1) * studInfo.spacing;
                 }
 
                 for (let l = 0; l < spts.length; l++) {
                     points.push({
-                        x: (segLength - x) / segLength * globalSpts[l].x + x / segLength * globalEpts[l].x,
-                        y: (segLength - x) / segLength * globalSpts[l].y + x / segLength * globalEpts[l].y,
-                        z: (segLength - x) / segLength * globalSpts[l].z + x / segLength * globalEpts[l].z
-                    })
+                        x: ((segLength - x) / segLength) * globalSpts[l].x + (x / segLength) * globalEpts[l].x,
+                        y: ((segLength - x) / segLength) * globalSpts[l].y + (x / segLength) * globalEpts[l].y,
+                        z: ((segLength - x) / segLength) * globalSpts[l].z + (x / segLength) * globalEpts[l].z,
+                    });
                     if (l === 0) {
-                        sidePoints.push(
-                            {
-                                x: (segLength - x) / segLength * sideSpt.x + x / segLength * sideEpt.x,
-                                y: (segLength - x) / segLength * sideSpt.y + x / segLength * sideEpt.y,
-                                z: (segLength - x) / segLength * sideSpt.z + x / segLength * sideEpt.z
-                            }
-                        )
+                        sidePoints.push({
+                            x: ((segLength - x) / segLength) * sideSpt.x + (x / segLength) * sideEpt.x,
+                            y: ((segLength - x) / segLength) * sideSpt.y + (x / segLength) * sideEpt.y,
+                            z: ((segLength - x) / segLength) * sideSpt.z + (x / segLength) * sideEpt.z,
+                        });
                     }
-
                 }
                 for (let l = 0; l < lspts.length; l++) {
-                    if ((segLength - x) / segLength * leftGlobalSpts[l].h + x / segLength * leftGlobalEpts[l].h >= 100) {
+                    if (((segLength - x) / segLength) * leftGlobalSpts[l].h + (x / segLength) * leftGlobalEpts[l].h >= 100) {
                         leftPoints.push({
-                            x: (segLength - x) / segLength * leftGlobalSpts[l].x + x / segLength * leftGlobalEpts[l].x,
-                            y: (segLength - x) / segLength * leftGlobalSpts[l].y + x / segLength * leftGlobalEpts[l].y,
-                            z: (segLength - x) / segLength * leftGlobalSpts[l].z + x / segLength * leftGlobalEpts[l].z
-                        })
+                            x: ((segLength - x) / segLength) * leftGlobalSpts[l].x + (x / segLength) * leftGlobalEpts[l].x,
+                            y: ((segLength - x) / segLength) * leftGlobalSpts[l].y + (x / segLength) * leftGlobalEpts[l].y,
+                            z: ((segLength - x) / segLength) * leftGlobalSpts[l].z + (x / segLength) * leftGlobalEpts[l].z,
+                        });
                     }
-                    if ((segLength - x) / segLength * rightGlobalSpts[l].h + x / segLength * rightGlobalEpts[l].h >= 100) {
+                    if (((segLength - x) / segLength) * rightGlobalSpts[l].h + (x / segLength) * rightGlobalEpts[l].h >= 100) {
                         rightPoints.push({
-                            x: (segLength - x) / segLength * rightGlobalSpts[l].x + x / segLength * rightGlobalEpts[l].x,
-                            y: (segLength - x) / segLength * rightGlobalSpts[l].y + x / segLength * rightGlobalEpts[l].y,
-                            z: (segLength - x) / segLength * rightGlobalSpts[l].z + x / segLength * rightGlobalEpts[l].z
-                        })
-                        rwSidePoints.push(
-                            {
-                                x: (segLength - x) / segLength * sideSpt.x + x / segLength * sideEpt.x,
-                                y: (segLength - x) / segLength * (sideStartY + rightGlobalSpts[l].h) + x / segLength * (sideEndY + rightGlobalEpts[l].h),
-                                z: 0
-                            }
-                        )
+                            x: ((segLength - x) / segLength) * rightGlobalSpts[l].x + (x / segLength) * rightGlobalEpts[l].x,
+                            y: ((segLength - x) / segLength) * rightGlobalSpts[l].y + (x / segLength) * rightGlobalEpts[l].y,
+                            z: ((segLength - x) / segLength) * rightGlobalSpts[l].z + (x / segLength) * rightGlobalEpts[l].z,
+                        });
+                        rwSidePoints.push({
+                            x: ((segLength - x) / segLength) * sideSpt.x + (x / segLength) * sideEpt.x,
+                            y:
+                                ((segLength - x) / segLength) * (sideStartY + rightGlobalSpts[l].h) +
+                                (x / segLength) * (sideEndY + rightGlobalEpts[l].h),
+                            z: 0,
+                        });
                     }
-
                 }
             }
-            sidePoints.sort(function (a, b) { return a.x > b.x ? 1 : -1 })
+            sidePoints.sort(function (a, b) {
+                return a.x > b.x ? 1 : -1;
+            });
 
-            let groupName = "G" + studPoints[i][j].girder.toString() + "SEG" + studPoints[i][j].seg.toString() + "_" + j.toString()
+            let groupName = "G" + studPoints[i][j].girder.toString() + "SEG" + studPoints[i][j].seg.toString() + "_" + j.toString();
             // let partName = "G" + studPoints[i][j].girder.toString() + "S" + studPoints[i][j].span.toString()
-            if (leftPoints.length > 0) { //볼트형 스터드로 옵션
+            if (leftPoints.length > 0) {
+                //볼트형 스터드로 옵션
                 studList.push(
-                    new Stud(0,Math.PI / 2 + lRad, rot, leftPoints, studInfo, {bolt : true}, 'stud', {
-                        key: groupName+ "L", part: partName,
+                    new Stud(0, Math.PI / 2 + lRad, rot, leftPoints, studInfo, { bolt: true }, "stud", {
+                        key: groupName + "L",
+                        part: partName,
                         girder: studPoints[i][j].girder,
                         seg: studPoints[i][j].seg,
                         massNum: i * 1,
-                        category: "leftWeb"
+                        category: "leftWeb",
                     })
-                )
+                );
             }
             if (rightPoints.length > 0) {
                 studList.push(
-                    new Stud(0,-Math.PI / 2 + rRad, rot, rightPoints, studInfo, {bolt : true}, 'stud', {
-                        key: groupName + "R", part: partName,
+                    new Stud(0, -Math.PI / 2 + rRad, rot, rightPoints, studInfo, { bolt: true }, "stud", {
+                        key: groupName + "R",
+                        part: partName,
                         girder: studPoints[i][j].girder,
                         seg: studPoints[i][j].seg,
                         massNum: i * 1,
-                        category: "rightWeb"
+                        category: "rightWeb",
                     })
-                )
+                );
             }
             if (!studDict[groupName]) {
-                studDict[groupName] = {}
+                studDict[groupName] = {};
             }
             if (skey.includes("D")) {
                 if (dGlobalSpts.length > 0) {
                     studList.push(
-                    new Stud( -Math.PI / 2, 0, rot, dGlobalSpts, studInfo, {bolt : true}, 'stud', {
-                        key: groupName + "DS", part: partName,
-                        girder: studPoints[i][j].girder,
-                        seg: studPoints[i][j].seg,
-                        massNum: i * 1,
-                        category: "diaphragmStart"
-                    })
-                    )
+                        new Stud(-Math.PI / 2, 0, rot, dGlobalSpts, studInfo, { bolt: true }, "stud", {
+                            key: groupName + "DS",
+                            part: partName,
+                            girder: studPoints[i][j].girder,
+                            seg: studPoints[i][j].seg,
+                            massNum: i * 1,
+                            category: "diaphragmStart",
+                        })
+                    );
                 }
             }
             if (ekey.includes("D")) {
                 if (dGlobalEpts.length > 0) {
                     studList.push(
-                        new Stud( Math.PI / 2, 0, rot, dGlobalEpts, studInfo, {bolt : true}, 'stud', {
-                            key: groupName + "DE", part: partName,
+                        new Stud(Math.PI / 2, 0, rot, dGlobalEpts, studInfo, { bolt: true }, "stud", {
+                            key: groupName + "DE",
+                            part: partName,
                             girder: studPoints[i][j].girder,
                             seg: studPoints[i][j].seg,
                             massNum: i * 1,
-                            category: "diaphragmEnd"
+                            category: "diaphragmEnd",
                         })
-                        )
+                    );
                 }
             }
             if (points.length > 0) {
                 studList.push(
-                    new Stud( 0, 0, 0, points, studInfo, {bolt : true}, 'stud', {
-                        key: groupName + "B", part: partName,
+                    new Stud(0, 0, 0, points, studInfo, { bolt: true }, "stud", {
+                        key: groupName + "B",
+                        part: partName,
                         girder: studPoints[i][j].girder,
                         seg: studPoints[i][j].seg,
                         massNum: i * 1,
-                        category: "bottomFlange"
+                        category: "bottomFlange",
                     })
-                    )
+                );
             }
         }
     }
 
-    return { studList, dimension, section} //, studDict }
+    return { studList, dimension, section }; //, studDict }
 }
 
 export function SupportGenerator(supportFixed, supportLayout, gridPoint, sectionPointDict) {
@@ -1340,9 +1498,7 @@ export function SupportGenerator(supportFixed, supportLayout, gridPoint, section
         //     model[name]={}
         // }
         // model[name]["solePlate" + index] = { type: "loft", points: newPoints } //곡선의 경우 솔플레이트 각도가 90도 회전되어 있음. 원인 파악 및 오류수정 필요 by drlim 20201024
-        model["children"].push(
-            new Loft(newPoints, true, "support", { key: "SPPT" + index, part: name })
-            );
+        model["children"].push(new Loft(newPoints, true, "support", { key: "SPPT" + index, part: name }));
     }
     return { data, model };
 }
