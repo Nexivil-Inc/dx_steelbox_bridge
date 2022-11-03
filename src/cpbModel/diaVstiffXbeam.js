@@ -2404,7 +2404,7 @@ export function IbeamJointV2(webPoints, centerPoint, xs, wBolt, fBolt) {
         {refPoint : webPoint2, dz : xs.webThickness / 2},
         plateMaterial, {}
     )
-    result["webJoint3"] = new Extrude(
+    result["webJoint4"] = new Extrude(
         webJoint1, xs.webJointThickness,
         {refPoint : webPoint2, dz : - xs.webJointThickness - xs.webThickness / 2},
         plateMaterial, {}
