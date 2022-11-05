@@ -32,8 +32,6 @@ export function CPBDeckPart(
     // return [ ...deckModel.deckPointDict['children'], ...barrier.newbarrierDict['children'], ...barrier.newpavementDict['children'], ...rebar['children']]
     return [...rebar['children']]
 }
-
-
 export function DeckSectionPoint(
     girderLayout,
     stPointDict,

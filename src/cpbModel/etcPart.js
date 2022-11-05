@@ -207,10 +207,10 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
 
         let xList = [-lx1 - iSectionPoint.input.buf, -lx1 - sp.webThickness - spliceSection.margin2, -lx1 + spliceSection.margin2];
         let uRibJoint = [
-            { y: -spliceSection.uRibJointLength / 2, x: iSectionPoint.input.Urib.height },
-            { y: spliceSection.uRibJointLength / 2, x: iSectionPoint.input.Urib.height },
-            { y: spliceSection.uRibJointLength / 2, x: iSectionPoint.input.Urib.height - spliceSection.uRibJointHeight },
-            { y: -spliceSection.uRibJointLength / 2, x: iSectionPoint.input.Urib.height - spliceSection.uRibJointHeight },
+            { x: -spliceSection.uRibJointLength / 2, y: iSectionPoint.input.Urib.height },
+            { x: spliceSection.uRibJointLength / 2, y: iSectionPoint.input.Urib.height },
+            { x: spliceSection.uRibJointLength / 2, y: iSectionPoint.input.Urib.height - spliceSection.uRibJointHeight },
+            { x: -spliceSection.uRibJointLength / 2, y: iSectionPoint.input.Urib.height - spliceSection.uRibJointHeight },
         ];
         for (let i in iSectionPoint.input.Urib.layout) {
             let uRibPoint = new RefPoint(
@@ -221,9 +221,9 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
                     },
                     iPoint
                 ),
-                iPoint.xAxis,
-                Math.atan(iPoint.gradientX),
-                Math.PI / 2
+                new Point(-iPoint.normalSin, iPoint.normalCos), 
+                -Math.PI / 2,
+                Math.atan(iPoint.gradientX), //부호 확인해봐야함
             );
             let uRibBolt = {
                 P: fBolt.P,
@@ -252,7 +252,7 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
                 )
             );
             result["children"].push(
-                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", uRibJoint), uRibBolt, uRibPoint, boltMaterial, {
+                new Bolt(BoltLayout(fBolt.G, fBolt.P, "y", uRibJoint), uRibBolt, uRibPoint, boltMaterial, {
                     part: gridkey,
                     key: "uRibJoint" + (i * 2 + 1).toString() + "bolt",
                 })
@@ -400,18 +400,18 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
         lowerFlangeOutter["t"] = spliceSection.lflangeJointThickness;
         let xList = [-lx1 - iSectionPoint.input.blf, -lx1 - sp.webThickness - spliceSection.margin2, -lx1 + spliceSection.margin2];
         let lRibJoint = [
-            { y: -spliceSection.lRibJointLength / 2, x: iSectionPoint.input.Lrib.height },
-            { y: spliceSection.lRibJointLength / 2, x: iSectionPoint.input.Lrib.height },
-            { y: spliceSection.lRibJointLength / 2, x: iSectionPoint.input.Lrib.height - spliceSection.lRibJointHeight },
-            { y: -spliceSection.lRibJointLength / 2, x: iSectionPoint.input.Lrib.height - spliceSection.lRibJointHeight },
+            { x: -spliceSection.lRibJointLength / 2, y: iSectionPoint.input.Lrib.height },
+            { x: spliceSection.lRibJointLength / 2, y: iSectionPoint.input.Lrib.height },
+            { x: spliceSection.lRibJointLength / 2, y: iSectionPoint.input.Lrib.height - spliceSection.lRibJointHeight },
+            { x: -spliceSection.lRibJointLength / 2, y: iSectionPoint.input.Lrib.height - spliceSection.lRibJointHeight },
         ];
 
         for (let i in iSectionPoint.input.Lrib.layout) {
             let lRibPoint = new RefPoint(
                 PointToSkewedGlobal({ x: iSectionPoint.input.Lrib.layout[i], y: lPoint.y }, iPoint),
-                iPoint.xAxis,
-                bXRad,
-                Math.PI / 2
+                new Point(-iPoint.normalSin, iPoint.normalCos),
+                Math.PI / 2,
+                -bXRad,
             );
             // result["lRibJoint" + (i * 2 + 1).toString()] = hPlateGenV2(lRibJoint, lRibPoint, spliceSection.lRibJointThickness, iSectionPoint.input.Lrib.thickness / 2, 90, bXRad, -Math.PI / 2, null, false)
             let lRibBolt = {
@@ -441,7 +441,7 @@ export function SplicePlateGenV2(iSectionPoint, iPoint, spliceSection, gridkey, 
                 )
             );
             result["children"].push(
-                new Bolt(BoltLayout(fBolt.G, fBolt.P, "x", lRibJoint), lRibBolt, lRibPoint, boltMaterial, {
+                new Bolt(BoltLayout(fBolt.G, fBolt.P, "y", lRibJoint), lRibBolt, lRibPoint, boltMaterial, {
                     part: gridkey,
                     key: "lRibJoint" + (i * 2 + 1).toString() + "bolt",
                 })
