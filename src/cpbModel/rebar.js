@@ -1,8 +1,9 @@
 import { IntersectionPointOnSpline, LineLength, LineToOffsetSpline, MainPointGenerator, multiLineIntersect, overLap, Point, PointToGlobal, Rebar, RefPoint, StPointToParallel, TrimPolyLine, TwoPointsLength } from "@nexivil/package-modules";
 import { DivideRebarSpacing, ExtendPoint2D, InterSectByRefPoint, LineSegmentsToPolyline, LoftCutBySpline, SplineToGlobal, toRefPoint } from "@nexivil/package-modules/src/temp";
+import { ToGlobalPoint2 } from "../model/utils";
 import { InterSectBySpline, Polygon2DOffset, SewPolyline } from "./module";
 
-export function SlabRebarFn(deckModel, girderLayout, gridPointDict, deckPartInput){
+export function SlabRebarFn(deckModel, girderLayout, gridPointDict, deckPartInput, girderBaseInfo){
     let rebarDict = []; // children만들지 않음, parent 필요없음 검증
     let input = deckPartInput.transRebar //횡철근
     // {
@@ -18,7 +19,7 @@ export function SlabRebarFn(deckModel, girderLayout, gridPointDict, deckPartInpu
     //     "centerUpperRebarDia": "H16",
     //     "centerLowerRebarDia": "H16"
     // }
-    let inputT =  deckPartInput.longiRebar //횡철근
+    let inputT =  deckPartInput.longiRebar //종철근
     // { //종철근
     //     "cover": {
     //         "top": 50,
@@ -59,111 +60,67 @@ export function SlabRebarFn(deckModel, girderLayout, gridPointDict, deckPartInpu
         "8" : { dia : inputT.supportLowerRebarDia??"H32", id :"rType2", name : "supportLowerRebar"},
     }
     // 기존코드 컨버팅용 시작
-    const girderNum = girderLayout.girderCount;
     const supportNum = girderLayout.supportCount - 2;
+    const blockOutL = girderBaseInfo.common.blockOutL
     let alignment = girderLayout.alignment;
-
-    // let deckModel = new Loft("concrete", "slabUpper", "concrete",deckPointDict["children"][0].points, false, )
-    // let girderDeckList = [];
-    // let crossDeckList = [];
-    // for (let i = 0; i<girderNum;i++){
-    //     let key = "slab" + String(i+1)
-    //     let bottomDeck = deckPointDict["children"].find( function(arr){ return arr.meta.key === key} )
-    //     girderDeckList.push(new Loft("concrete", key, "concrete", bottomDeck.points,  false))
-    // }
-    // for (let i = 0; i<girderNum+1;i++){
-    //     let key = "slab" + String(i) + "-" +String(i+1)
-    //     let bottomDeck = deckPointDict["children"].find( function(arr){ return arr.meta.key === key} )
-    //     crossDeckList.push(new Loft("concrete", key, "concrete", bottomDeck.points,  false))
-    // }
     let slabGeos = deckModel['children'].filter(obj=>obj.meta.key ==="slab").map(obj=>obj.threeFunc(new Point(0,0,0)))
-    
-    // console.log(alignment, deckModel, deckModel.meta)
-    let stk0 = gridPointDict["CRK0"].mainStation
-    let skewk0 = gridPointDict["CRK0"].skew
-    let stk7 = gridPointDict["CRK7"].mainStation
-    let skewk7 = gridPointDict["CRK7"].skew
-    let stk3 = gridPointDict["CRK3"].mainStation
-    let skewk3 = gridPointDict["CRK3"].skew
-    let stk4 = gridPointDict["CRK4"].mainStation
-    let skewk4 = gridPointDict["CRK4"].skew
-    // console.log(deckPointDict.upperDict)
-    // let k1l = deckModel.points[0][2]
-    // let k1r = deckModel.points[0][6]
-    // let k6l = deckModel.points[deckModel.points.length-1][2]
-    // let k6r = deckModel.points[deckModel.points.length-1][6]
-    let leftK1 = deckModel.upperDict["CRK1"].leftPoint;
-    let rightK1 = deckModel.upperDict["CRK1"].rightPoint;//AlignmentToMatchedPoint(alignment, toRefPoint(k1r))
-    let leftK6 = deckModel.upperDict["CRK6"].leftPoint;//AlignmentToMatchedPoint(alignment, toRefPoint(k6l))
-    let rightK6 = deckModel.upperDict["CRK6"].rightPoint;//AlignmentToMatchedPoint(alignment, toRefPoint(k6r))
+
+    let leftK0 = deckModel.upperDict["CRK0"].leftPoint;
+    let rightK0 = deckModel.upperDict["CRK0"].rightPoint;//AlignmentToMatchedPoint(alignment, toRefPoint(k1r))
+    let leftK7 = deckModel.upperDict["CRK7"].leftPoint;//AlignmentToMatchedPoint(alignment, toRefPoint(k6l))
+    let rightK7 = deckModel.upperDict["CRK7"].rightPoint;//AlignmentToMatchedPoint(alignment, toRefPoint(k6r))
     let leftK3 = deckModel.upperDict["CRK3"].leftPoint;
     let rightK3 = deckModel.upperDict["CRK3"].rightPoint;//AlignmentToMatchedPoint(alignment, toRefPoint(k1r))
     let leftK4 = deckModel.upperDict["CRK4"].leftPoint;//AlignmentToMatchedPoint(alignment, toRefPoint(k6l))
     let rightK4 = deckModel.upperDict["CRK4"].rightPoint;//AlignmentToMatchedPoint(alignment, toRefPoint(k6r))
-
     
-    
-    // 기존코드 컨버팅용 끝
-
-
+    //중앙부 횡방향 
     let start = Math.max(leftK3.mainStation, rightK3.mainStation);
     let end = Math.min(leftK4.mainStation, rightK4.mainStation);
-    let stList = DivideRebarSpacing(start+100, end-100, input.centerctc, 0);
+    let stList = DivideRebarSpacing(start+50, end-50, input.centerctc, 1);
+    
     for (let st of stList){
         let stPoint = MainPointGenerator(st, alignment,0);
         let ref = stPoint;
         let segs = slabGeos.map(obj => InterSectByRefPoint(obj, ref))
         let pLines = segs.map(seg=> LineSegmentsToPolyline(seg)[0])
         let rSection = Polygon2DOffset(SewPolyline(pLines, 50), input.cover.top??50, input.cover.bottom??55, input.cover.side??50, input.cover.side??50, true)[0]
-        let upperRebar = [ rSection.bottom[0], ...rSection.top, rSection.bottom[rSection.bottom.length-1]]
-        rebarDict.push(new Rebar(PointToGlobal(upperRebar, ref), ri, {a:100}, ri["1"].dia, {part : "상부주철근", key : "1"}))
-        let lowerRebar = [ rSection.top[0], ...rSection.bottom, rSection.top[rSection.top.length-1]]
-        rebarDict.push(new Rebar(PointToGlobal(lowerRebar, ref), ri, {a:100}, ri["5"].dia, {part : "하부주철근", key : "5"}))
-        // rebarDict.push(...MainBottomRebarGenV2(rSection, ri, stPoint))
+        rebarDict.push(... transRebarGen(rSection, ri, ref, input))
     }
-    let SkewNum1 =  Math.floor(Math.abs( start -  Math.min(leftK1.mainStation, rightK1.mainStation))/input.endctc)
-    if (SkewNum1>0){ //시점부 사각철근
-        let sec1 = 1/Math.cos(skewk0);
-        let k0 = MainPointGenerator(stk0, alignment, skewk0);
-        for (let n = 0; n<SkewNum1 + 2;n++){
-            let dst = sec1*input.cover.side + n*input.endctc;
-            let stPoint = StPointToParallel(k0, dst, alignment);
-            let ref = toRefPoint(stPoint,true);
-
-            let segs = slabGeos.map(obj => InterSectByRefPoint(obj, ref))
-            let pLines = segs.map(seg=> LineSegmentsToPolyline(seg)[0])
-            let rSection = Polygon2DOffset(SewPolyline(pLines, 50), input.cover.top??50, input.cover.bottom??55, input.cover.side??50, input.cover.side??50, true)[0]
-            let upperRebar = [ rSection.bottom[0], ...rSection.top, rSection.bottom[rSection.bottom.length-1]]
-
-            rebarDict.push(new Rebar(PointToGlobal(upperRebar, ref), ri, {a:100}, ri["1-1"].dia, {part : "상부주철근", key : "1-1"}))
-            // rebarDict.push(...MainBottomRebarGenV2(rSection, ri, refP))
-            let lowerRebar = [ rSection.top[0], ...rSection.bottom, rSection.top[rSection.top.length-1]]
-            rebarDict.push(new Rebar(PointToGlobal(lowerRebar, ref), ri, {a:100}, ri["5"].dia, {part : "하부주철근", key : "5"}))
-        }
+    //시점단부 횡방향
+    let startCover = 1/Math.cos(gridPointDict["CRK0"].skew)*input.cover.side;
+    let startAdd = gridPointDict["CRK0"].skew !== 0? input.endctc : 0
+    let startStList = [ startCover, startCover + blockOutL/2,
+        ...DivideRebarSpacing(startCover + blockOutL,  startAdd + Math.abs(start -  Math.min(leftK0.mainStation, rightK0.mainStation)), input.endctc, 0)];
+    for (let dst of startStList){
+        let stPoint = StPointToParallel(gridPointDict["CRK0"], dst, alignment);
+        let ref = toRefPoint(stPoint,true);
+        let segs = slabGeos.map(obj => InterSectByRefPoint(obj, ref))
+        let pLines = segs.map(seg=> LineSegmentsToPolyline(seg)[0])
+        let rSection = Polygon2DOffset(SewPolyline(pLines, 50), input.cover.top??50, input.cover.bottom??55, input.cover.side??50, input.cover.side??50, true)[0]
+        rebarDict.push(... transRebarGen(rSection, ri, ref, input))
     }
-    let SkewNum2 =  Math.floor(Math.abs( Math.max(leftK6.mainStation,rightK6.mainStation) - end)/input.endctc)
-    if (SkewNum2>0){ //종점부 사각철근
-        let sec2 = 1/Math.cos(skewk7);
-        let k7 = MainPointGenerator(stk7, alignment, skewk7);
-        for (let n = 0; n<SkewNum2 + 2;n++){
-            let dst = -sec2*input.cover.side - n*input.endctc;
-            let stPoint = StPointToParallel(k7, dst, alignment);
-            let ref = toRefPoint(stPoint,true);
-            
-            let segs = slabGeos.map(obj => InterSectByRefPoint(obj, ref))
-            let pLines = segs.map(seg=> LineSegmentsToPolyline(seg)[0])
-            let rSection = Polygon2DOffset(SewPolyline(pLines, 50), input.cover.top??50, input.cover.bottom??55, input.cover.side??50, input.cover.side??50, true)[0]
-            let upperRebar = [ rSection.bottom[0], ...rSection.top, rSection.bottom[rSection.bottom.length-1]]
-            rebarDict.push(new Rebar(PointToGlobal(upperRebar, ref), ri, {a:100}, ri["1-1"].dia, {part : "상부주철근", key : "1-1"}))
-            // rebarDict.push(...MainBottomRebarGenV2(rSection, ri, ref))
-            let lowerRebar = [ rSection.top[0], ...rSection.bottom, rSection.top[rSection.top.length-1]]
-            rebarDict.push(new Rebar(PointToGlobal(lowerRebar, ref), ri, {a:100}, ri["5"].dia, {part : "하부주철근", key : "5"}))
-        }
+    //종점단부 횡방향
+    let endCover = 1/Math.cos(gridPointDict["CRK7"].skew)*input.cover.side;
+    let endAdd = gridPointDict["CRK7"].skew !== 0? input.endctc : 0
+    let endStList = [ endCover, endCover + blockOutL/2,
+        ...DivideRebarSpacing(endCover + blockOutL, endAdd + Math.abs(Math.max(leftK7.mainStation, rightK7.mainStation)- end), input.endctc, 0)];
+    for (let dst of endStList){
+        let stPoint = StPointToParallel(gridPointDict["CRK7"], -1*dst, alignment);
+        let ref = toRefPoint(stPoint,true);
+        let segs = slabGeos.map(obj => InterSectByRefPoint(obj, ref))
+        let pLines = segs.map(seg=> LineSegmentsToPolyline(seg)[0])
+        let rSection = Polygon2DOffset(SewPolyline(pLines, 50), input.cover.top??50, input.cover.bottom??55, input.cover.side??50, input.cover.side??50, true)[0]
+        rebarDict.push(... transRebarGen(rSection, ri, ref, input))
     }
-    let leftOffset = deckModel.upperDict["CRK1"].leftPoint.offset + input.cover.side
-    let rightOffset = deckModel.upperDict["CRK1"].rightPoint.offset - input.cover.side
-    let offsetList = DivideRebarSpacing(leftOffset, rightOffset, inputT.ctc)
-    let date1 = new Date()
+    //종방향철근 생성
+    let dSide = Math.max(input.centerUpperRebarDia.slice(1)*1 + inputT.centerUpperRebarDia.slice(1)*1, input.centerLowerRebarDia.slice(1)*1 + inputT.centerLowerRebarDia.slice(1)*1)/2 + input.cover.side
+    let dTop = (input.centerUpperRebarDia.slice(1)*1 + inputT.centerUpperRebarDia.slice(1)*1)/2 + input.cover.top
+    let dBottom = (input.centerLowerRebarDia.slice(1)*1 + inputT.centerLowerRebarDia.slice(1)*1)/2 + input.cover.bottom
+    let leftOffset = deckModel.upperDict["CRK1"].leftPoint.offset + dSide
+    let rightOffset = deckModel.upperDict["CRK1"].rightPoint.offset - dSide
+    let offsetList = DivideRebarSpacing(leftOffset, rightOffset, inputT.ctc, 1)
+   
     for (let off of offsetList){
         //곡교일 경우 station이 교차할 수 있음
         let sliceLine = LineToOffsetSpline(alignment, off, gridPointDict["CRS0"], gridPointDict["CRS"+String(supportNum+1)])
@@ -172,142 +129,12 @@ export function SlabRebarFn(deckModel, girderLayout, gridPointDict, deckPartInpu
         segs.forEach(seg=> pLines.push(...SewPolyline(seg, 0.1)))
         let sewPline = SewPolyline(pLines, 10)
         let sideSection = sewPline[0].map(pt=> new Point(pt.station, pt.z, 0))
-        let rSection = Polygon2DOffset([sideSection], input.cover.top??50, input.cover.bottom??55, input.cover.side??50, input.cover.side??50)[0]
-
-        rebarDict.push(...transRebarGen(rSection, ri, sliceLine, gridPointDict, inputT, supportNum))
-
-        // rebarDict.push(new Rebar(  SplineToGlobal(rSection.top.slice(1,-1), sliceLine.points) , ri, {a:100}, "H32", {part : "상부배력철근", key : "5"}))
-        // rebarDict.push(new Rebar(  SplineToGlobal(rSection.bottom, sliceLine.points) , ri, {a:100}, "H32", {part : "하부배력철근", key : "5"}))
+        let rSection = Polygon2DOffset([sideSection], (dTop)??50, (dBottom)??55, startCover??50, endCover??50)[0]
+        rebarDict.push(...longiRebarGen(rSection, ri, sliceLine, gridPointDict, inputT, supportNum))
     }
-    let date2 = new Date()
-    console.log("duration", date2-date1,"msec")
     return { "children" : rebarDict, "rebarInfo" : ri, input, inputT }
 }
-
-export function MainBottomRebarGenV2(rebar, ri, stPoint, isLocal = false) {
-    let boxBottom = []; //하부철근
-    let boxBottom2 = []; //헌치가 없는 경우 하부철근
-    let plateBottom = [];
-    let boxCantil = [];
-    let boxCantil2 = []; //헌치가 없는 경우
-    let plateCantil = [];
-    let boxhaunch = [];
-    let platehaunch = [];
-    let bottomPoint = []; //하부철근
-    let l1 = rebar.slice(0, 3);
-    for (let index = 3; index < rebar.length; index += 8) {
-        let l2 = rebar.slice(index, index + 8); //헌치부 판단변수
-        let p1 = null;
-        let p2 = null;
-        let p3 = null;
-        let p4 = null;
-        p1 = multiLineIntersect(l1, l2.slice(0, 2), true, true);
-        p2 = multiLineIntersect(l1, l2.slice(2, 4), true, true);
-        p3 = multiLineIntersect(l1, l2.slice(4, 6), true, true);
-        p4 = multiLineIntersect(l1, l2.slice(6), true, true);
-        let isBox = isNaN(p2.x) && isNaN(p3.x); //오류발생원인 파악 필요
-
-        if (index === 3) {
-            //첫번째 거더
-            if (isBox) {
-                //박스부인경우
-                if (isNaN(p4.x)) {
-                    boxCantil2.push([l1[2], l2[0], l2[1], l2[6]]);
-                } else {
-                    boxCantil.push([l1[2], l2[0], l2[1], l2[6], p4]);
-                }
-            } else {
-                //플레이트부인경우
-                plateCantil.push([l1[2], l2[0], l2[1], l2[2], p2]);
-                platehaunch.push([p3, l2[5], l2[6], p4]);
-            }
-        } else if (index === rebar.length - 8) {
-            //마지막 거더
-            if (isBox) {
-                //박스부인경우
-                if (isNaN(p1.x)) {
-                    boxCantil2.push([l1[0], l2[7], l2[6], l2[1]]);
-                } else {
-                    boxCantil.push([l1[0], l2[7], l2[6], l2[1], p1]);
-                }
-            } else {
-                //플레이트부인경우
-                plateCantil.push([l1[0], l2[7], l2[6], l2[5], p3]);
-                platehaunch.push([p1, l2[1], l2[2], p2]);
-            }
-        } else {
-            platehaunch.push([p1, l2[1], l2[2], p2]);
-            platehaunch.push([p3, l2[5], l2[6], p4]);
-            boxhaunch.push([p1, l2[1], l2[6], p4]);
-        }
-        
-
-        if (index > 3) {
-            bottomPoint.push(l2[0]);
-            if (isBox) {
-                //박스부인경우
-                if (!isNaN(p1.x)) {
-                    // 단부/가로보가 아닌 경우
-                    boxBottom.push(bottomPoint);
-                    bottomPoint = [];
-                }
-            }
-        }
-        if (!isBox) {
-            // 플레이트거더부인 경우
-            bottomPoint.push(l2[3], l2[4]);
-        }
-        if (index + 8 < rebar.length) {
-            bottomPoint.push(l2[7]);
-        } else {
-            //마지막거더의 경우
-            if (isBox) {
-                //박스부인경우
-                if (isNaN(p1.x)) {
-                    // 단부/가로보의 경우
-                    boxBottom2.push(bottomPoint);
-                }
-            } else {
-                //플레이트부인경우
-                plateBottom.push(bottomPoint);
-            }
-        }
-    }
-
-    for (let i in boxBottom) {
-        boxBottom[i].unshift(ExtendPoint2D(boxBottom[i][1], boxBottom[i][0], 400));
-        boxBottom[i].push(ExtendPoint2D(boxBottom[i][boxBottom[i].length - 2], boxBottom[i][boxBottom[i].length - 1], 400));
-    }
-    for (let i in plateBottom) {
-        plateBottom[i].unshift(ExtendPoint2D(plateBottom[i][1], plateBottom[i][0], 400));
-        plateBottom[i].push(ExtendPoint2D(plateBottom[i][plateBottom[i].length - 2], plateBottom[i][plateBottom[i].length - 1], 400));
-    }
-    let rebarDict = [];
-    if (isLocal){
-        boxBottom.forEach(pts=> {if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "4", ri["4"].dia, pts, ri, {a:100}))})
-        boxBottom2.forEach(pts=>{if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "4-1", ri["4-1"].dia, pts, ri, {a:100}))})
-        plateBottom.forEach(pts=>{if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "4-2", ri["4-2"].dia, pts, ri, {a:100}))})
-        boxCantil.forEach(pts=>{if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "3", ri["3"].dia, pts, ri, {a:100}))})
-        boxCantil2.forEach(pts=>{if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "3-1", ri["3-1"].dia, pts, ri, {a:100}))})
-        plateCantil.forEach(pts=>{if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "3-2", ri["3-2"].dia, pts, ri, {a:100}))})
-        boxhaunch.forEach(pts=>{if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "9", ri["9"].dia, pts, ri, {a:100}))})
-        platehaunch.forEach(pts=>{if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "9-1", ri["9-1"].dia, pts, ri, {a:100}))})
-    } else {
-        boxBottom.forEach(pts=>{if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "4", ri["4"].dia, PointToGlobal(pts, stPoint), ri, {a:100}))})
-        boxBottom2.forEach(pts=>{if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "4-1", ri["4-1"].dia, PointToGlobal(pts, stPoint), ri, {a:100}))})
-        plateBottom.forEach(pts=>{if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "4-2", ri["4-2"].dia, PointToGlobal(pts, stPoint), ri, {a:100}))})
-        boxCantil.forEach(pts=>{if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "3", ri["3"].dia, PointToGlobal(pts, stPoint), ri, {a:100}))})
-        boxCantil2.forEach(pts=>{if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "3-1", ri["3-1"].dia, PointToGlobal(pts, stPoint), ri, {a:100}))})
-        plateCantil.forEach(pts=>{if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "3-2", ri["3-2"].dia, PointToGlobal(pts, stPoint), ri, {a:100}))})
-        boxhaunch.forEach(pts=>{if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "9", ri["9"].dia, PointToGlobal(pts, stPoint), ri, {a:100}))})
-        platehaunch.forEach(pts=>{if(PolyLineLength(pts)) rebarDict.push(new Rebar("하부주철근", "9-1", ri["9-1"].dia, PointToGlobal(pts, stPoint), ri, {a:100}))})
-    }
-    // return { boxBottom, boxBottom2, plateBottom, boxCantil, boxCantil2, plateCantil, boxhaunch, platehaunch };
-    return rebarDict
-}
-
-
-function transRebarGen(rebarSection, ri, sliceLine, gridPointDict, inputT, supportNum) {
+function longiRebarGen(rebarSection, ri, sliceLine, gridPointDict, inputT, supportNum) {
     let err = 0.1
     let gradCr = 0.15
     let top = rebarSection.top;
@@ -440,7 +267,7 @@ function transRebarGen(rebarSection, ri, sliceLine, gridPointDict, inputT, suppo
                 let l1 = [{x : supportStation[s-1] + inputT.supportRebarLength/2 - overLapSupportL, y : 0},{x : supportStation[s-1] + inputT.supportRebarLength/2 - overLapSupportL, y : 1}]
                 let l2 = [{x : supportStation[s] - inputT.supportRebarLength/2  + overLapSupportL, y : 0},{x : supportStation[s] - inputT.supportRebarLength/2 + overLapSupportL, y : 1}]
                 let centerRebar = TrimPolyLine(TrimPolyLine(straightRebars[i], l1, true), l2, false)
-                rebarDict.push(new Rebar(SplineToGlobal(centerRebar, sliceLine.points), ri, {a:100},ri["6"].dia, "하부배력철근","6"))
+                rebarDict.push(new Rebar(SplineToGlobal(centerRebar, sliceLine.points), ri, {a:100},ri["6"].dia, {part : "하부배력철근", key : "6"}))
             } else {
                 let centerRebar = [ExtendPoint2D(straightRebars[i][1], straightRebars[i][0], overLapEndL), ...straightRebars[i], ExtendPoint2D(straightRebars[i][straightRebars[i].length-2], straightRebars[i][straightRebars[i].length-1], overLapEndL)]
                 rebarDict.push(new Rebar(SplineToGlobal(centerRebar, sliceLine.points), ri, {a:100}, ri["6"].dia, {part : "하부배력철근",key : "6"}))
@@ -508,6 +335,263 @@ function transRebarGen(rebarSection, ri, sliceLine, gridPointDict, inputT, suppo
             rebarDict.push(new Rebar(SplineToGlobal(centerRebar, sliceLine.points), ri, {a:100}, ri["5"].dia, {part : "상부배력철근", key : "5"}))
         }
     }
+    return rebarDict;
+}
+
+
+function transRebarGen(rebarSection, ri, refPoint) {
+    let err = 0.1
+    let gradCr = 0.15
+    let extending = 400
+
+    let top = rebarSection.top;
+    if(top[0].x > top[top.length-1].x){
+        top.reverse()
+    }
+    let bottom = rebarSection.bottom;
+    if(bottom[0].x > bottom[bottom.length-1].x){
+        bottom.reverse()
+    }
+    let rIndex = 0;
+    let lowerRebars = [[bottom[0]]];
+
+    for (let i = 0; i < bottom.length - 1; i++) {
+        let p1 = bottom[i];
+        let p2 = bottom[i+1];
+        let dx = p2.x - p1.x
+        let dy = p2.y - p1.y
+        if (dx> err){
+            if (dy/dx< -gradCr){ //바닥판 두께변화구간에, 헌치철근이 절점 3개이상으로 이어질 경우, 오류발생
+                let p3 = multiLineIntersect(top, [p1,p2], true, true);
+                lowerRebars.push([])
+                rIndex++
+                lowerRebars[rIndex].push(p3)
+                lowerRebars[rIndex].push(p2)
+            } else if (dy/dx>gradCr){
+                let p4 = multiLineIntersect(top, [p1,p2], true, true);
+                lowerRebars[rIndex].push(p4)
+                lowerRebars.push([])
+                rIndex++
+                lowerRebars[rIndex].push(p2)
+            } else {
+                lowerRebars[rIndex].push(p2)
+            }
+        }
+    }
+    let rebarDict = [];
+    let straightRebars = [];
+    let upperRebar = [ bottom[0], ...top, bottom[bottom.length-1]]
+    rebarDict.push(new Rebar(PointToGlobal(upperRebar, refPoint), ri, {a:100}, ri["1"].dia, {part : "상부주철근", key : "1"}))
+
+    //lowerRebar개수에 따라 1개인 경우 예외처리가 필요함
+
+    for (let i = 0; i<lowerRebars.length;i++){
+        if(i===0){ //시점 하부철근 굽힘
+            lowerRebars[i].unshift(top[0])
+            let rSection = lowerRebars[i]
+            rebarDict.push(new Rebar(PointToGlobal(rSection, refPoint), ri, {a:100}, ri["3"].dia, {part : "하부주철근", key : "3"}))
+        } else if(i===lowerRebars.length-1){//종점 하부철근 굽힘
+            lowerRebars[i].push(top[top.length-1])
+            let rSection = lowerRebars[i]
+            rebarDict.push(new Rebar(PointToGlobal(rSection, refPoint), ri, {a:100}, ri["3"].dia, {part : "하부주철근", key : "3"}))
+        } else if(lowerRebars[i].length>1){
+            let p1 = lowerRebars[i][0];
+            let p2 = lowerRebars[i][1];
+            let p3 = lowerRebars[i][lowerRebars[i].length-2];
+            let p4 = lowerRebars[i][lowerRebars[i].length-1];
+            let dx = p2.x - p1.x
+            let dy = p2.y - p1.y
+            let dx2 = p4.x - p3.x
+            let dy2 = p4.y - p3.y
+            if(Math.abs(dy/dx)>gradCr && Math.abs(dy2/dx2)>gradCr){ //양측이 헌치인 경우
+                if (Math.abs(p3.x - p2.x) < 1000){ //헌치간격이 좁은 경우, 플레이트부라고 판단함, 
+                    let rSection = lowerRebars[i]
+                    if (rSection.length>3){//오류철근 포함방지용
+                        rebarDict.push(new Rebar(PointToGlobal(rSection, refPoint), ri, {a:100}, ri["9"].dia, {part : "하부주철근", key : "9-1"}))
+                    }
+                } else { //박스구간 하면 헌치 철근
+                    let rSection = lowerRebars[i] 
+                    if (rSection.length>3){//오류철근 포함방지용!!
+                        rebarDict.push(new Rebar(PointToGlobal(rSection, refPoint), ri, {a:100}, ri["9"].dia, {part : "하부주철근", key : "9"}))                    
+                    }
+                } 
+            } else if(Math.abs(dy/dx)>gradCr){
+                //둘중에 앞부분이 헌치인 경우
+                let rSection = [... lowerRebars[i], ExtendPoint2D(lowerRebars[i][lowerRebars[i].length-2], lowerRebars[i][lowerRebars[i].length-1], extending)]
+                    rebarDict.push(new Rebar(PointToGlobal(rSection, refPoint), ri, {a:100}, ri["7"].dia, {part : "하부주철근", key : "7"}))                    
+            } else if(Math.abs(dy2/dx2)>gradCr){
+                //둘중에 뒷부분이 헌치인 경우
+                let rSection = [ExtendPoint2D(lowerRebars[i][1], lowerRebars[i][0], extending), ... lowerRebars[i]]
+                    rebarDict.push(new Rebar(PointToGlobal(rSection, refPoint), ri, {a:100}, ri["7"].dia, {part : "하부주철근", key : "7"}))                    
+            } else { //양측 직선인 경우
+                straightRebars.push(lowerRebars[i])
+            }
+        } else {
+            // console.log("transLowerRebarErr", lowerRebars[i])
+        }
+    }
+    for (let i = straightRebars.length-1;  i > 0 ; i--){ //가로보 헌치로 인하여 절단된 종방향 하부철근을 연결
+        if (Math.abs(straightRebars[i][0].x - straightRebars[i-1][straightRebars[i-1].length-1].x)< 1200){
+            straightRebars[i-1].push(...straightRebars[i])
+            straightRebars.splice(i,1)
+        }
+    }
+    for (let i in straightRebars){
+        let l = straightRebars[i].length
+        let pts = [ExtendPoint2D(straightRebars[i][1], straightRebars[i][0], extending), ...straightRebars[i], ExtendPoint2D(straightRebars[i][l-2], straightRebars[i][l-1], extending)]
+        rebarDict.push(new Rebar(PointToGlobal(pts, refPoint), ri, {a:100}, ri["4"].dia, {part : "하부주철근", key : "4"}))
+    }
 
     return rebarDict;
+}
+
+export function BottomRebarModel(rebarInfo, mainPartModel, sectionPointDict, girderLayout) {
+    let alignemnt = girderLayout.alignment
+    let bottomRebarDict = { parent: [], children: [],};
+
+    let startPoint = {};
+    let endPoint = {};
+    let topOff = rebarInfo.cover.top??50;
+    let sideOff = rebarInfo.cover.side??50;
+    let bottomOff = rebarInfo.cover.bottom??55;
+    let endOff = rebarInfo.cover.side??50;
+    let spacing = rebarInfo.spacing??125; 
+    let loopRebarDia = rebarInfo.loopRebarDia??"H16"; 
+    let longiRebarDia = rebarInfo.longiRebarDia??"H16"; 
+    // let rebarDia = "";
+    let ri = { //rebar info
+        "B1" : { dia : loopRebarDia, id : "rType4", name : "상부스터럽"},
+        "B2" : { dia : loopRebarDia, id : "rType5", name : "하부스터럽"},
+        "C1" : { dia : longiRebarDia, id : "rType4", name : "상부종방향"},
+        "C2" : { dia : longiRebarDia, id : "rType1", name : "하부종방향"},
+    }
+    // let transRebarList = [];
+    let lConcModels = mainPartModel.filter(obj => obj.meta.key.includes("lConc"))
+    for (let st in lConcModels) {
+            // let transRebarSub = []
+            let lConc = lConcModels[st]
+            let geo = lConc.threeFunc(new Point(0,0,0))
+            startPoint = lConc.meta.gridPoints[0].point
+            endPoint = lConc.meta.gridPoints[lConc.meta.gridPoints.length - 1].point
+            let section = sectionPointDict[lConc.meta.gridPoints[0].key].forward;
+            let startSection = sectionPointDict[lConc.meta.gridPoints[0].key].forward.lConc
+            let endSection = sectionPointDict[lConc.meta.gridPoints[lConc.meta.gridPoints.length - 1].key].backward.lConc
+            let startTan = Math.tan(startPoint.skew)
+            let endTan = Math.tan(endPoint.skew)
+            let startAdd = Math.max(startTan*startSection[1].x, startTan*startSection[2].x)
+            let endAdd = Math.min(endTan*endSection[1].x, endTan*endSection[2].x)
+
+            let startStList =  DivideRebarSpacing(endOff, endOff + Math.abs(startTan*startSection[1].x - startTan*startSection[2].x), spacing, 0)
+            let centerStList = DivideRebarSpacing(startAdd + endOff, endAdd + endPoint.mainStation - startPoint.mainStation - endOff, spacing)
+            let endStList =  DivideRebarSpacing(- endOff, -endOff - Math.abs(endTan*endSection[1].x - endTan*endSection[2].x), spacing, 0)
+            let allList = [
+                {stList :startStList, skew : startPoint.skew, cp : startPoint}, 
+                {stList : centerStList, skew : 0, cp : {...startPoint, skew : 0}}, 
+                {stList : endStList, skew : endPoint.skew, cp : endPoint}
+            ]
+            let sec1 = 1/Math.cos(startPoint.skew)
+            let sec2 = 1/Math.cos(endPoint.skew)
+            for (let l of allList){
+                let skew = l.skew
+                let sec = 1/Math.cos(skew)
+                if(l.stList.length>1){
+                    for (let station of l.stList) {
+                        let origin = PointToGlobal(new Point(0,0, -station), l.cp)
+                        let cp = toRefPoint(origin, true);
+                        let section2D = SewPolyline(InterSectByRefPoint(geo, cp), 0.01)
+                        if(section2D.length>0){
+                            let mainRebar = BottomMainRebarGen(section2D, topOff, sideOff*sec, bottomOff, section, sec)
+                            if (mainRebar) {
+                                for (let r in mainRebar.topRebar) {
+                                    let gPts = PointToGlobal(mainRebar.topRebar[r], cp) 
+                                    bottomRebarDict["children"].push(
+                                    new Rebar(gPts, ri, {}, ri["B1"].dia, {part : "하부콘크리트철근", key:"B1"}))
+                                }
+                                for (let r in mainRebar.bottomRebar) {
+                                    let gPts = PointToGlobal(mainRebar.bottomRebar[r], cp) ;
+                                    bottomRebarDict["children"].push(
+                                    new Rebar(gPts, ri, {}, ri["B1"].dia, {part : "하부콘크리트철근", key:"B2"}))
+                                }
+                            }
+                        }
+                    }
+                    // transRebarList.push(transRebarSub)
+                }
+            }
+            let dia = (loopRebarDia.slice(1)*1 + longiRebarDia.slice(1)*1)
+            let transRebarOffset = [startSection[1].x + sideOff + dia, -660, -510, -360, -210, -75, 75, 210, 360, 510, 660, startSection[2].x - sideOff -dia]; //상세값을 전달받아서 수정해야함
+            let gLine = girderLayout.girderSplines[lConc.meta.girder-1]
+            let part = "하부콘크리트철근"
+            for (let offset of transRebarOffset){
+                let sliceLine = LineToOffsetSpline(gLine, offset)
+                let section = SewPolyline(InterSectBySpline(geo, sliceLine), 0.01)[0]
+                if (section.length>3){
+                    let section2D = section.map(pt=> new Point(pt.station, pt.z))
+                    let rebar = Polygon2DOffset([section2D], topOff+dia, bottomOff+dia, sideOff*sec1, sideOff*sec2, true)[0]
+                    let upperRebar = [rebar.bottom[0], ...rebar.top, rebar.bottom[rebar.bottom.length-1]]
+                    bottomRebarDict["children"].push(new Rebar( SplineToGlobal(upperRebar, sliceLine.points), ri, {}, ri["C1"].dia, {part, key : "C1"}))
+                    bottomRebarDict["children"].push(new Rebar( SplineToGlobal(rebar.bottom, sliceLine.points), ri, {}, ri["C2"].dia, {part, key : "C2"}))
+                }
+            }
+    
+        }
+    return bottomRebarDict
+}
+
+export function BottomMainRebarGen(section2D, topOff, sideOff, bottomOff, sectionPoint, sec) {
+    let ribLayout = sectionPoint?.input.Lrib.layout??[-400, 400] //향후 단면에서 받아올 수 있도록
+    let rebar = Polygon2DOffset(section2D, topOff, bottomOff, sideOff, sideOff, true)[0];  //concToRebarOffset(section2D, offsets)
+    let top1 = rebar.top[0];
+    let top2 = rebar.top[rebar.top.length-1];
+    let bottom1 = rebar.bottom[0];
+    let bottom2 = rebar.bottom[rebar.bottom.length-1];
+    if (top1 && top2 && bottom1 && bottom2) {
+        let topRebar = [[ExtendPoint2D(bottom1, top1, -100), top1, top2, ExtendPoint2D(bottom2, top2, -100)]];
+        let bottomRebarList = []; //하부철근
+        let uCp = [];
+        let lCp = [];
+        for (let i in ribLayout) {
+            uCp.push({ x: (top1.x + top2.x) / 2 + ribLayout[i]*sec, y: (top1.y + top2.y) / 2 });
+            lCp.push({ x: (bottom1.x + bottom2.x) / 2 + ribLayout[i]*sec, y: (bottom1.y + bottom2.y) / 2 })
+        }
+        for (let i = 0; i < ribLayout.length + 1; i++) {
+            if (i === 0) {
+                bottomRebarList.push(
+                    [
+                        ExtendPoint2D(top2, top1, -100),
+                        top1,
+                        bottom1,
+                        ExtendPoint2D(bottom1, lCp[i], -75*sec),
+                        ExtendPoint2D(top1, uCp[i], -75*sec),
+                        ExtendPoint2D(top1, uCp[i], -75*sec-100)
+                    ]
+                )
+            } else if (i === ribLayout.length) {
+                bottomRebarList.push(
+                    [
+                        ExtendPoint2D(top1, top2, -100),
+                        top2,
+                        bottom2,
+                        ExtendPoint2D(bottom2, lCp[i - 1], -75*sec),
+                        ExtendPoint2D(top2, uCp[i - 1], -75*sec),
+                        ExtendPoint2D(top2, uCp[i - 1], -75*sec-100)
+                    ]
+                )
+            } else {
+                bottomRebarList.push(
+                    [
+                        ExtendPoint2D(uCp[i - 1], uCp[i], -75*sec-100),
+                        ExtendPoint2D(uCp[i - 1], uCp[i], -75*sec),
+                        ExtendPoint2D(lCp[i - 1], lCp[i], -75*sec),
+                        ExtendPoint2D(lCp[i], lCp[i - 1], -75*sec),
+                        ExtendPoint2D(uCp[i], uCp[i - 1], -75*sec),
+                        ExtendPoint2D(uCp[i], uCp[i - 1], -75*sec-100)
+                    ]
+                )
+            }
+        }
+        return { bottomRebar: bottomRebarList, topRebar, rebar }
+    } else {
+        console.log("bottomConcMainRebar is blank", section2D)
+    }
 }

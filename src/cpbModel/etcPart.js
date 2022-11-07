@@ -2,13 +2,15 @@ import { Extrude, Loft, PlateRestPoint, Point, PointToSkewedGlobal, RefPoint, Tw
 import { DivideRebarSpacing, scallop, Stud, toRefPoint } from "@nexivil/package-modules/src/temp";
 import { Bolt } from "./3D";
 import { BoltLayout, vPlateGenV2 } from "./diaVstiffXbeam";
+import { BottomRebarModel } from "./rebar";
 
-export function CPBEtcPart(stPointDict, girderStation, sectionPointDict, etcPartInput, crossKeys) {
+export function CPBEtcPart(girderLayout, stPointDict, girderStation, sectionPointDict, etcPartInput, crossKeys, mainPartModel) {
     let hStiffModel = HorStiffDict(stPointDict, sectionPointDict, etcPartInput.hStiff, etcPartInput.isStiff ?? false);
     let jackupModel = JackupStiffDictV2(stPointDict, sectionPointDict, etcPartInput.jackup);
     let studModel = StudPoint(girderStation, sectionPointDict, etcPartInput.stud, etcPartInput.bottomStud, crossKeys);
     let spport = SupportGenerator(etcPartInput.supportFixed, etcPartInput.support, stPointDict, sectionPointDict);
-    return [...hStiffModel["children"], ...jackupModel["children"], ...studModel["children"], ...spport["model"]["children"]];
+    let lconcRebar = BottomRebarModel(etcPartInput.lowerConc, mainPartModel, sectionPointDict, girderLayout);
+    return [...hStiffModel["children"], ...jackupModel["children"], ...studModel["children"], ...spport["model"]["children"], ...lconcRebar["children"]];
 }
 
 export function SplicePlateV2(stPointDict, sectionPointDict, sPliceLayout, sPliceSectionList) {

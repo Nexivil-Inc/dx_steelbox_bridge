@@ -112,15 +112,17 @@ export function MainPartDefaultDataAutoGen() {
   }
 
   export function GenETCPartModel(){
+    this.addInput("girderLayout", "girderLayout");
     this.addInput("stPointDict","object");
     this.addInput("girderStation",0);
     this.addInput("sectionPointDict","object");
     this.addInput("ETCPartInput","object");
     this.addInput("crossKeys","");
+    this.addInput("mainPartModel","");
     this.addOutput("ETCPartModel","object");
   }
   GenETCPartModel.prototype.onExecute = function() {
-    const result = CPBEtcPart(this.getInputData(0), this.getInputData(1), this.getInputData(2), this.getInputData(3), this.getInputData(4))
+    const result = CPBEtcPart(this.getInputData(0), this.getInputData(1), this.getInputData(2), this.getInputData(3), this.getInputData(4), this.getInputData(5), this.getInputData(6))
     this.setOutputData(0, result)
   }
 

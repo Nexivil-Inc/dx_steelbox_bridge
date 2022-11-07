@@ -169,7 +169,9 @@ export function SewPolyline(polyLineList = [], tolerance = 0.1) {
             if (TwoPointsLength(result[0], result[result.length - 1]) < tolerance) {
                 result.pop();
             }
-            resultList.push(result);
+            if (result.length>1){
+                resultList.push(result);
+            }
         } else {
             break;
         }

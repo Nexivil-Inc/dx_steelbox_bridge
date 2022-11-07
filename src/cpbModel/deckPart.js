@@ -28,7 +28,7 @@ export function CPBDeckPart(
         crossKeys
     )
     let barrier = BarrierSectionPointV2(girderLayout, centerLineStations, girderBaseInfo, mainPartInput, stPointDict, deckPartInput.barrierLayoutInput, deckPartInput.barrierSection)
-    let rebar = SlabRebarFn(deckModel.deckPointDict, girderLayout, stPointDict, deckPartInput)
+    let rebar = SlabRebarFn(deckModel.deckPointDict, girderLayout, stPointDict, deckPartInput, girderBaseInfo)
     // return [ ...deckModel.deckPointDict['children'], ...barrier.newbarrierDict['children'], ...barrier.newpavementDict['children'], ...rebar['children']]
     return [...rebar['children']]
 }

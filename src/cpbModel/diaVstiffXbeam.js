@@ -1303,6 +1303,7 @@ export function DYXbeam4V2(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNo
     }
     let rad = cw * Math.acos(dotVec);
     let tan = Math.tan(rad);
+    let sec = 1/Math.cos(rad);
 
     // const rotationY = (centerPoint.skew - 90) * Math.PI / 180
 
@@ -1421,7 +1422,7 @@ export function DYXbeam4V2(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNo
             { x: sign * 20, y: -xs.bracketWidth / 2 },
             { x: 0, y: -xs.bracketWidth / 2 },
         ];
-        lowerbracket1 = lowerbracket1.map(pt=>new Point(pt.x, pt.y + tan*pt.x))
+        lowerbracket1 = lowerbracket1.map(pt=>new Point(pt.x, pt.y*sec + tan*pt.x))
         let bracketShape = [
             lowerbracket1[0],
             lowerbracket1[1],
@@ -1462,7 +1463,7 @@ export function DYXbeam4V2(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNo
         { x: l + skewSin, y: -xs.flangeWidth / 2 },
         { x: l - skewSin, y: xs.flangeWidth / 2 },
     ];
-    uflangePlate = uflangePlate.map(pt=>new Point(pt.x, pt.y + tan*pt.x))
+    uflangePlate = uflangePlate.map(pt=>new Point(pt.x, pt.y*sec + tan*pt.x))
     result["children"].push(
         new Extrude(uflangePlate, xs.flangeThickness, { refPoint: uPoint, dz : 0}, "steelBox", {
             group: group,
@@ -1478,7 +1479,7 @@ export function DYXbeam4V2(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNo
         { x: ll + skewSin, y: -xs.flangeWidth / 2 },
         { x: ll - skewSin, y: xs.flangeWidth / 2 },
     ];
-    lflangePlate = lflangePlate.map(pt=>new Point(pt.x, pt.y + tan*pt.x))
+    lflangePlate = lflangePlate.map(pt=>new Point(pt.x, pt.y*sec + tan*pt.x))
     result["children"].push(
         new Extrude(lflangePlate, xs.flangeThickness, { refPoint: lPoint, dz : -xs.flangeThickness}, "steelBox", {
             group: group,
@@ -1555,6 +1556,7 @@ export function DYXbeam3V2(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNo
     }
     let rad = cw * Math.acos(dotVec);
     let tan = Math.tan(rad);
+    let sec = 1/Math.cos(rad);
 
     //폐합시를 고려하여 예외처리 필요
     let ufl, ufr, lfl, lfr;
@@ -1684,7 +1686,7 @@ export function DYXbeam3V2(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNo
             { x: sign * 20, y: -xs.bracketWidth / 2 },
             { x: 0, y: -xs.bracketWidth / 2 },
         ];
-        lowerbracket1 = lowerbracket1.map(pt=>new Point(pt.x, pt.y + tan*pt.x))
+        lowerbracket1 = lowerbracket1.map(pt=>new Point(pt.x, pt.y*sec + tan*pt.x))
         let bracketShape = [
             lowerbracket1[0],
             lowerbracket1[1],
@@ -1723,7 +1725,7 @@ export function DYXbeam3V2(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNo
         { x: l + skewSin, y: -xs.flangeWidth / 2 },
         { x: l - skewSin, y: xs.flangeWidth / 2 },
     ];
-    uflangePlate = uflangePlate.map(pt=>new Point(pt.x, pt.y + tan*pt.x))
+    uflangePlate = uflangePlate.map(pt=>new Point(pt.x, pt.y*sec + tan*pt.x))
     result["children"].push(
         new Extrude(uflangePlate, xs.flangeThickness, { refPoint: uPoint, dz : 0}, "steelBox", {
             group: group,
@@ -1809,6 +1811,7 @@ export function DYXbeam2V2(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNo
     }
     let rad = cw * Math.acos(dotVec);
     let tan = Math.tan(rad);
+    let sec = 1/Math.cos(rad);
 
     let centerPoint = 
     {   ...iPoint,
@@ -1973,7 +1976,7 @@ export function DYXbeam2V2(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNo
             { x: sign * 15, y: -xs.bracketWidth / 2 },
             { x: 0, y: -xs.bracketWidth / 2 },
         ];
-        lowerbracket1 = lowerbracket1.map(pt=>new Point(pt.x, pt.y + tan*pt.x))
+        lowerbracket1 = lowerbracket1.map(pt=>new Point(pt.x, pt.y*sec + tan*pt.x))
         let bracketShape = [
             lowerbracket1[0],
             lowerbracket1[1],
@@ -2013,7 +2016,7 @@ export function DYXbeam2V2(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNo
         { x: l + skewSin, y: -xs.flangeWidth / 2 },
         { x: l - skewSin, y: xs.flangeWidth / 2 },
     ];
-    uflangePlate = uflangePlate.map(pt=>new Point(pt.x, pt.y + tan*pt.x))
+    uflangePlate = uflangePlate.map(pt=>new Point(pt.x, pt.y*sec + tan*pt.x))
     result["children"].push(
         new Extrude(uflangePlate, xs.flangeThickness, { refPoint: uPoint, dz : 0}, "steelBox", {
             group: group,
@@ -2029,7 +2032,7 @@ export function DYXbeam2V2(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNo
         { x: ll + skewSin, y: -xs.flangeWidth / 2 },
         { x: ll - skewSin, y: xs.flangeWidth / 2 },
     ];
-    lflangePlate = lflangePlate.map(pt=>new Point(pt.x, pt.y + tan*pt.x))
+    lflangePlate = lflangePlate.map(pt=>new Point(pt.x, pt.y*sec + tan*pt.x))
     result["children"].push(
         new Extrude(lflangePlate, xs.flangeThickness, { refPoint: lPoint, dz : -xs.flangeThickness}, "steelBox", {
             group: group,
@@ -2105,6 +2108,7 @@ export function DYXbeam1V2(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNo
     }
     let rad = cw * Math.acos(dotVec);
     let tan = Math.tan(rad);
+    let sec = 1/Math.cos(rad);
 
     const rightAngle = Math.PI / 2;
     let cw2 = jPoint.normalCos * vec.y - jPoint.normalSin * vec.x > 0 ? 1 : -1; // 반시계방향의 경우 1
@@ -2249,7 +2253,7 @@ export function DYXbeam1V2(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNo
                 { x: sign * 20, y: -xs.bracketWidth / 2 },
                 { x: 0, y: -xs.bracketWidth / 2 },
             ];
-            lowerbracket1 = lowerbracket1.map(pt=>new Point(pt.x, pt.y + tan*pt.x))
+            lowerbracket1 = lowerbracket1.map(pt=>new Point(pt.x, pt.y*sec + tan*pt.x))
             let bracketShape = [
                 lowerbracket1[0],
                 lowerbracket1[1],
@@ -2298,7 +2302,7 @@ export function DYXbeam1V2(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNo
         { x: l + skewSin, y: -xs.flangeWidth / 2 },
         { x: l - skewSin, y: xs.flangeWidth / 2 },
     ];
-    uflangePlate = uflangePlate.map(pt=>new Point(pt.x, pt.y + tan*pt.x))
+    uflangePlate = uflangePlate.map(pt=>new Point(pt.x, pt.y*sec + tan*pt.x))
     result["children"].push(
         new Extrude(uflangePlate, xs.flangeThickness, { refPoint: uPoint, dz : 0}, "steelBox", {
             group: group,
@@ -2314,7 +2318,7 @@ export function DYXbeam1V2(iPoint, jPoint, iSectionPoint, jSectionPoint, xs, iNo
         { x: ll + skewSin, y: -xs.flangeWidth / 2 },
         { x: ll - skewSin, y: xs.flangeWidth / 2 },
     ];
-    lflangePlate = lflangePlate.map(pt=>new Point(pt.x, pt.y + tan*pt.x))
+    lflangePlate = lflangePlate.map(pt=>new Point(pt.x, pt.y*sec + tan*pt.x))
     result["children"].push(
         new Extrude(lflangePlate, xs.flangeThickness, { refPoint: lPoint, dz : -xs.flangeThickness}, "steelBox", {
             group: group,

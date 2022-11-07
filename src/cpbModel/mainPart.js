@@ -155,32 +155,32 @@ export function SteelBoxModel(girderStation, sectionPointDict, entrance, crossKe
         // }
         //하부콘크리트 모델
         if (point1.girderStation < point2.girderStation) {
-        keyname = "G" + (i * 1 + 1).toString() + "lConc" + lConci
-        // if (!steelBoxDict[keyname]) { steelBoxDict[keyname] = { points: [[], [], []] }; };
-        L1 = sectionPointDict[pk1].forward.lConc;
-        L2 = sectionPointDict[pk2].backward.lConc;
-        L3 = sectionPointDict[pk2].forward.lConc;
-  
-        if (!bottomConcDict[keyname] && L1.length > 0) {
-          bottomConcDict[keyname] = [];
-        }
-        if (L1.length > 0) {
-          // let L1Global = L1.map(pt=>PointToSkewedGlobal(pt, point1))
-          // L1.forEach(element => L1Global.push(PointToSkewedGlobal(element, point1)));
-          bottomConcPoints.push(L1.map(pt=>PointToSkewedGlobal(pt, point1)))
-          bottomConcGridPoints.push({ key: pk1, point: point1 })
-        }
-        if ((L1.length > 0 && L2.length > 0 && L3.length === 0)) {
-          let L2Global = []
-          L2.forEach(element => L2Global.push(PointToSkewedGlobal(element, point2)));
-          bottomConcPoints.push(L2Global)
-          bottomConcGridPoints.push({ key: pk2, point: point2 })
-          result["children"].push(new Loft(bottomConcPoints, true, 'slab', 
-          {group: 'Girder' + String(i*1+1), part: segName, key: keyname, girder: (i * 1 + 1), seg: segNum}))
-          lConci += 1;
-          bottomConcPoints = [];
-          bottomConcGridPoints = [];
-        }
+          keyname = "G" + (i * 1 + 1).toString() + "lConc" + lConci
+          // if (!steelBoxDict[keyname]) { steelBoxDict[keyname] = { points: [[], [], []] }; };
+          L1 = sectionPointDict[pk1].forward.lConc;
+          L2 = sectionPointDict[pk2].backward.lConc;
+          L3 = sectionPointDict[pk2].forward.lConc;
+    
+          if (!bottomConcDict[keyname] && L1.length > 0) {
+            bottomConcDict[keyname] = [];
+          }
+          if (L1.length > 0 && !crossKeys.includes(pk1)) {
+            // let L1Global = L1.map(pt=>PointToSkewedGlobal(pt, point1))
+            // L1.forEach(element => L1Global.push(PointToSkewedGlobal(element, point1)));
+            bottomConcPoints.push(L1.map(pt=>PointToSkewedGlobal(pt, point1)))
+            bottomConcGridPoints.push({ key: pk1, point: point1 })
+          }
+          if ((L1.length > 0 && L2.length > 0 && L3.length === 0)) {
+            let L2Global = []
+            L2.forEach(element => L2Global.push(PointToSkewedGlobal(element, point2)));
+            bottomConcPoints.push(L2Global)
+            bottomConcGridPoints.push({ key: pk2, point: point2 })
+            result["children"].push(new Loft(bottomConcPoints, true, 'slab', 
+            {group: 'Girder' + String(i*1+1), part: segName, key: keyname, girder: (i * 1 + 1), seg: segNum, gridPoints : bottomConcGridPoints}))
+            lConci += 1;
+            bottomConcPoints = [];
+            bottomConcGridPoints = [];
+          }
         }
       }
     }
