@@ -1,4 +1,4 @@
-import { IntersectionPointOnSpline, LineLength, LineToOffsetSpline, MainPointGenerator, multiLineIntersect, overLap, Point, PointToGlobal, Rebar, RefPoint, StPointToParallel, TrimPolyLine, TwoPointsLength } from "@nexivil/package-modules";
+import { IntersectionPointOnSpline, LineLength, LineToOffsetSpline, MainPointGenerator, multiLineIntersect, overLap, Point, PointToGlobal, Rebar, RefPoint, StPointToParallel, TrimPolyLine, TwoLineIntersect, TwoPointsLength } from "@nexivil/package-modules";
 import { DivideRebarSpacing, ExtendPoint2D, InterSectByRefPoint, LineSegmentsToPolyline, LoftCutBySpline, SplineToGlobal, toRefPoint } from "@nexivil/package-modules/src/temp";
 import { ToGlobalPoint2 } from "../model/utils";
 import { InterSectBySpline, Polygon2DOffset, SewPolyline } from "./module";
@@ -518,7 +518,7 @@ export function BottomRebarModel(rebarInfo, mainPartModel, sectionPointDict, gir
                     // transRebarList.push(transRebarSub)
                 }
             }
-            let dia = (loopRebarDia.slice(1)*1 + longiRebarDia.slice(1)*1)
+            let dia = (loopRebarDia.slice(1)*1 + longiRebarDia.slice(1)*1)/2
             let transRebarOffset = [startSection[1].x + sideOff + dia, -660, -510, -360, -210, -75, 75, 210, 360, 510, 660, startSection[2].x - sideOff -dia]; //상세값을 전달받아서 수정해야함
             let gLine = girderLayout.girderSplines[lConc.meta.girder-1]
             let part = "하부콘크리트철근"
@@ -594,4 +594,174 @@ export function BottomMainRebarGen(section2D, topOff, sideOff, bottomOff, sectio
     } else {
         console.log("bottomConcMainRebar is blank", section2D)
     }
+}
+
+//////////////////
+
+
+export function BarrierRebarModel(rebarInfo, barrierModel, alignment, deckModel) {
+    // let overLap = { "H13": 460, "H16": 570, "H19": 690, "H22": 790 } //철근 겹침길이
+    let topOff = rebarInfo.cover.top??50;
+    let sideOff = rebarInfo.cover.side??50;
+    let bottomOff = rebarInfo.cover.bottom??55;
+    let endOff = 50;
+    let barrierRebarDict = { parent: [], children: [], section: [] };
+    let slabGeos = deckModel['children'].filter(obj=>obj.meta.key ==="slab").map(obj=>obj.threeFunc(new Point(0,0,0)))
+    let spacing = rebarInfo.spacing //125; //단부 철근 간격
+    let loopRebarDia = rebarInfo.loopRebarDia//16; 
+    let longiRebarDia = rebarInfo.longiRebarDia //16; 
+    let shearRebarDia = rebarInfo.shearRebarDia //16; 
+    let transRebarList = [];
+    let rebarDia = ""
+    let ri = { //rebar info
+        "N1" : { dia : loopRebarDia, id : "rType", name : "스터럽"},
+        "N2" : { dia : shearRebarDia, id : "rType", name : "전단철근"},
+        "N3" : { dia : longiRebarDia, id : "rType", name : "종방향철근"},
+    }
+    for (let st in barrierModel) {
+        let transRebarSub = []
+        let Barrier = barrierModel[st]
+        let geo = Barrier.threeFunc(new Point(0,0,0))
+
+        let startStation = Math.max(Barrier.points[0][0].mainStation, Barrier.points[0][Barrier.points[0].length-1].mainStation)
+        let endStation = Math.min(Barrier.points[Barrier.points.length - 1][0].mainStation, Barrier.points[Barrier.points.length - 1][Barrier.points[Barrier.points.length - 1].length-1].mainStation)
+        let stList = DivideRebarSpacing(startStation + endOff, endStation - endOff, spacing, 1)
+        for (let station of stList){
+            let skew = 0
+            let cp = toRefPoint(MainPointGenerator(station, alignment, skew), true)
+            let section2D = SewPolyline(InterSectByRefPoint(geo, cp), 0.1)
+            
+            let segs = slabGeos.map(obj => InterSectByRefPoint(obj, cp))
+            let pLines = segs.map(seg=> LineSegmentsToPolyline(seg)[0])
+            let rSection = Polygon2DOffset(SewPolyline(pLines, 50), topOff, bottomOff, 0, 0, true)[0]
+            if(section2D.length>0){
+                let mainRebar = BarrierMainRebarGen(section2D, sideOff, Barrier["meta"]["part"], rSection.bottom)
+                let transRebarPoints = BarrierTransRebarGen(section2D, sideOff, Barrier["meta"]["part"])
+                rebarDia = loopRebarDia;
+                for (let r in mainRebar.topRebar) {
+                    let gPts = PointToGlobal(mainRebar.topRebar[r], cp);
+                    barrierRebarDict["children"].push(new Rebar(gPts, ri, {}, ri["N1"].dia, {part : "방호벽철근", key:"N1"}))
+                }
+                rebarDia = shearRebarDia;
+                for (let r in mainRebar.shearRebar) {
+                    let gPts = PointToGlobal(mainRebar.shearRebar[r], cp);
+                    barrierRebarDict["children"].push(new Rebar(gPts, ri, {}, ri["N2"].dia, {part : "방호벽철근", key:"N2"}))
+                }
+                transRebarSub.push(PointToGlobal(transRebarPoints, cp))
+            }
+        }
+        transRebarList.push(transRebarSub)
+    }
+    rebarDia = longiRebarDia;
+    for (let t in transRebarList) {
+        for (let j = 0; j < transRebarList[t][0].length; j++) {
+            let gPts = [];
+            for (let i = 0; i < transRebarList[t].length; i++) {
+                gPts.push(transRebarList[t][i][j])
+            }
+            barrierRebarDict["children"].push(new Rebar(gPts, ri, {}, ri["N3"].dia, {part : "방호벽철근", key:"N3"}))
+        }
+    }
+    return barrierRebarDict
+}
+
+export function BarrierMainRebarGen(section2D, cover, sectionName, lowerSlabRebarPoints=undefined) {
+    let isClockWise = true;
+    if (sectionName.includes("우")) {
+        isClockWise = false;
+    }
+    let rebar = Polygon2DOffset(section2D, cover, 0, cover, cover, true)[0];
+    // console.log(section2D, rebar)
+    let topRebar = []
+    let pt1 = ExtendPoint2D(rebar.left[1], rebar.left[0], 200)
+    let pt2 = ExtendPoint2D(rebar.right[1], rebar.right[0], 200)
+    if (lowerSlabRebarPoints){
+        let nPt1 = multiLineIntersect(lowerSlabRebarPoints, [rebar.left[1], rebar.left[0]]);
+        let nPt2 = multiLineIntersect(lowerSlabRebarPoints, [rebar.right[1], rebar.right[0]]);
+        pt1 = nPt1??pt1;
+        pt2 = nPt2??pt2;
+    }
+    if (sectionName.includes("좌")) {
+        topRebar = [
+            [
+                { x: pt1.x + 100, y: pt1.y ,z : 0},
+                pt1,
+                ...rebar.left, ...rebar.right.slice().reverse(),
+                pt2,
+                { x: pt2.x + 100, y: pt2.y, z : 0 },
+
+            ]
+        ];
+    } else {
+        // console.log("우10", rebar, section2D) //뭔가 잘못나와서 확인이 필요함
+        topRebar = [
+            [
+                { x: pt1.x - 100, y: pt1.y, z : 0 },
+                pt1,
+                ...rebar.left, ...rebar.right.slice().reverse(),
+                pt2,
+                { x: pt2.x - 100, y: pt2.y, z : 0 },
+            ]
+        ];
+    }
+    let shearRebar = []
+    // 방호벽 테스트후에 수정해야함
+    // if (rebar.all.length > 4) {
+    //     if (rebar[1].y - 200 > rebar[rebar.length - 2].y) {
+    //         shearRebar.push([
+    //             ExtendPoint2D(rebar.left[1], rebar.left[0], rebar.right[0].y - rebar.right[1].y),
+    //             rebar.right[1]
+    //         ])
+    //     }
+    //     if (rebar[1].y > rebar[rebar.length - 3].y) {
+    //         let h = rebar[1].y - rebar[rebar.length - 3].y
+    //         let n = Math.floor(h / 300);
+    //         shearRebar.push([
+    //             ExtendPoint2D(rebar[1], rebar[0], rebar[rebar.length - 1].y - rebar[rebar.length - 3].y),
+    //             rebar[rebar.length - 3]
+    //         ])
+    //         for (let i = 0; i < n; i++) {
+    //             shearRebar.push([
+    //                 ExtendPoint2D(rebar[0], rebar[1], - h / (n + 1) * (i + 1)),
+    //                 ExtendPoint2D(rebar[rebar.length - 3], rebar[2], - h / (n + 1) * (i + 1))
+    //             ])
+    //         }
+    //     }
+    // }
+    return { topRebar, shearRebar, rebar }
+}
+
+export function BarrierTransRebarGen(section2D, cover, sectionName) {
+    let dia = 13
+
+    let isClockWise = true;
+    if (sectionName.includes("우")) {
+        isClockWise = false;
+    }
+    let rebar = Polygon2DOffset(section2D, cover + dia, 0, cover + dia, cover + dia, true)[0];
+    let height = rebar.left[rebar.left.length-1].y - rebar.left[0].y
+    let result = [ 
+        rebar.left[rebar.left.length-1], rebar.right[rebar.right.length-1],
+    ];
+    // if (rebar.length > 4) {
+    //     if (rebar[1].y - rebar[rebar.length - 2].y > 200) { //좌우측 높이가 200mm이상 차이가 날때
+    //         result.push(ExtendPoint2D(rebar[1], rebar[0], rebar[rebar.length - 1].y - rebar[rebar.length - 2].y))
+    //     }
+    //     if (rebar.length > 4 && rebar[1].y > rebar[rebar.length - 3].y) {
+
+    //         let h = rebar[1].y - rebar[rebar.length - 3].y
+    //         let n = Math.floor(h / 300);
+    //         result.push(ExtendPoint2D(rebar[1], rebar[0], rebar[rebar.length - 1].y - rebar[rebar.length - 3].y))
+    //         for (let i = 0; i < n; i++) {
+    //             result.push(ExtendPoint2D(rebar[0], rebar[1], - h / (n + 1) * (i + 1)))
+    //             result.push(ExtendPoint2D(rebar[rebar.length - 3], rebar[2], - h / (n + 1) * (i + 1)))
+    //         }
+    //     }
+    // } else {
+        if (height > 400) { //4각 단면이면서 연석 높이가 400이상일 
+            result.push(ExtendPoint2D(rebar.left[0], rebar.left[rebar.left.length-1], - height / 2))
+            result.push(ExtendPoint2D(rebar.right[0], rebar.right[rebar.right.length - 1], - height / 2))
+        }
+    // }
+    return result
 }

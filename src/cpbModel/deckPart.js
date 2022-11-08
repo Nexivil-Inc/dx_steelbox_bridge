@@ -1,7 +1,7 @@
 import { IntersectionPointOnSpline, LineToOffsetSpline, Loft, MainPointGenerator, p, PointToGlobal, PointToSkewedGlobal, Rebar, TwoLineIntersect, TwoPointsLength, WebPoint } from "@nexivil/package-modules";
 import { concToRebarOffset, DivideRebarSpacing, LoftCutBySpline, RebarPointGen } from "@nexivil/package-modules/src/temp";
 import { PointSectionInfo2 } from "./context";
-import { SlabRebarFn } from "./rebar";
+import { BarrierRebarModel, SlabRebarFn } from "./rebar";
 
 
 export function CPBDeckPart(
@@ -28,9 +28,16 @@ export function CPBDeckPart(
         crossKeys
     )
     let barrier = BarrierSectionPointV2(girderLayout, centerLineStations, girderBaseInfo, mainPartInput, stPointDict, deckPartInput.barrierLayoutInput, deckPartInput.barrierSection)
-    let rebar = SlabRebarFn(deckModel.deckPointDict, girderLayout, stPointDict, deckPartInput, girderBaseInfo)
-    // return [ ...deckModel.deckPointDict['children'], ...barrier.newbarrierDict['children'], ...barrier.newpavementDict['children'], ...rebar['children']]
-    return [...rebar['children']]
+    let slabRebar = SlabRebarFn(deckModel.deckPointDict, girderLayout, stPointDict, deckPartInput, girderBaseInfo)
+    let barrierRebar = BarrierRebarModel(deckPartInput.barrierRebar, barrier.newbarrierDict['children'],girderLayout.alignment, deckModel.deckPointDict)
+    return [ 
+    ...deckModel.deckPointDict['children'], 
+    ...barrier.newbarrierDict['children'], 
+    ...barrier.newpavementDict['children'], 
+    ...slabRebar['children'],
+    ...barrierRebar['children'],
+    ]
+    // return [...rebar['children']]
 }
 export function DeckSectionPoint(
     girderLayout,
@@ -695,11 +702,9 @@ export function BarrierSectionPointV2(girderLayout, centerLineStations, girderBa
     let pavement = {};
     let newpavementDict = { parent: [], children: [] };
     let leftOffset = deckLayout[0][3];
-    let rightOffset = deckLayout[deckLayout.length - 1][3];
+    let rightOffset = deckLayout[0][4];
     let LgirderLine = girderLayout.girderSplines[0];
     let RgirderLine = girderLayout.girderSplines[girderLayout.girderSplines.length - 1];
-    
-    
     let kLineList = [];
     for (let i = 1; i < centerLineStations.length - 1; i++) { 
         let masterPoint = centerLineStations[i].point
@@ -743,8 +748,7 @@ export function BarrierSectionPointV2(girderLayout, centerLineStations, girderBa
             let leftP = IntersectionPointOnSpline(LineToOffsetSpline(LgirderLine, leftOffset), masterPoint,alignment) //LineMatch2(masterPoint, alignment, OffsetLine(leftOffset, LgirderLine));
             let rightP = IntersectionPointOnSpline(LineToOffsetSpline(RgirderLine, rightOffset), masterPoint,alignment);
             let bool = kLineList.some(kline => Boolean(TwoLineIntersect(kline, [leftP, rightP])))
-            let section2DBarrier = { part: centerLineStations[i].key, model: { sectionView: [] }, dimension: { topView: [], sectionView: [] } }; // parent data
-            let section2DPavement = { part: centerLineStations[i].key, model: { sectionView: [] } }; // parent data
+
             if (!bool || centerLineStations[i].key.includes("CRK")){
                 
                 for (let b = 0; b < barrierLayout.length; b++) {
@@ -754,21 +758,10 @@ export function BarrierSectionPointV2(girderLayout, centerLineStations, girderBa
                         if (!barrier.hasOwnProperty(key)) {
                             barrier[key] = { type: "loft", points: [], gridPoint: [], closed: false };
                             new_BarrierData[key] = new Loft([], true, "concrete", { key: "barrier", part: key })
-                            // {
-                            //     type: "loft",
-                            //     points: [],
-                            //     gridPoint: [],
-                            //     closed: false,
-                            //     meta: { key: "barrier", part: key },
-                            //     get threeFunc() {
-                            //         return InitPoint => LoftModelView(this.points, this.closed, this.cap, this.ptGroup, InitPoint);
-                            //     },
-                            // };
                         }
                         let section = barrierSection[barrierLayout[b]["type"]];
                         section["points"] = barrierFn[barrierLayout[b]["type"]](section.w, section.h);
                         let pts = [];
-                        // let geo = new THREE.Geometry();
                         if (barrierLayout[b]["from"] === "슬래브좌측") {
                             let lLine1 = LineToOffsetSpline(LgirderLine, leftOffset + barrierLayout[b]["offset"]);
                             let lLine2 = LineToOffsetSpline(LgirderLine, leftOffset + barrierLayout[b]["offset"] + section.w);
@@ -781,9 +774,6 @@ export function BarrierSectionPointV2(girderLayout, centerLineStations, girderBa
                             section.points.forEach(pt => sectionPt.push({ x: l1.offset + pt.x, y: l1.z - masterPoint.z + pt.y }));
                             sectionPt.push({ x: l2.offset, y: l2.z - masterPoint.z  - paveT});
 
-                            // section2DBarrier["model"]["sectionView"].push({ sectionName: key, ...ToLine(sectionPt, "WHITE", false) });
-                            // section2DBarrier["dimension"]["topView"].push({ sectionName: key, points: [pts[0], pts[pts.length - 1]] });
-                            // section2DBarrier["dimension"]["sectionView"].push({ x: l1.offset, y: 0 }, { x: l2.offset, y: 0 });
                             lowPt.push(pts[0], pts[pts.length - 1]);
                             upperPt.push(pts[1], pts[pts.length - 2]);
                             lowPt2D.push(sectionPt[0], sectionPt[sectionPt.length - 1]);
@@ -804,9 +794,6 @@ export function BarrierSectionPointV2(girderLayout, centerLineStations, girderBa
                             section.points.forEach(pt => sectionPt.push({ x: l1.offset + pt.x, y: l1.z - masterPoint.z + pt.y }));
                             sectionPt.push({ x: l2.offset, y: l2.z - masterPoint.z - paveT});
 
-                            // section2DBarrier["model"]["sectionView"].push({ sectionName: key, ...ToLine(sectionPt, "WHITE", false) });
-                            // section2DBarrier["dimension"]["topView"].push({ sectionName: key, points: [pts[pts.length - 1], pts[0]] });
-                            // section2DBarrier["dimension"]["sectionView"].push({ x: l2.offset, y: 0 }, { x: l1.offset, y: 0 });
                             lowPt.push(pts[pts.length - 1], pts[0]);
                             upperPt.push(pts[pts.length - 2], pts[1]);
                             lowPt2D.push(sectionPt[sectionPt.length - 1], sectionPt[0]);
@@ -855,7 +842,6 @@ export function BarrierSectionPointV2(girderLayout, centerLineStations, girderBa
                         pts2D = [lowPt2D[pede[p].index], { x: upperPt2D[pede[p].index].x, y: upperPt2D[pede[p].index + 1].y + dz }, upperPt2D[pede[p].index + 1], lowPt2D[pede[p].index + 1]];
                     }
                     new_PavementData[pede[p].key].points.push(pts.reverse());
-                    // section2DPavement["model"]["sectionView"].push(ToLine(pts2D, "GRAY", false));
                 }
                 for (let p in pave) {
                     let pts, pts2D;
@@ -866,7 +852,6 @@ export function BarrierSectionPointV2(girderLayout, centerLineStations, girderBa
                             { x: masterPoint.x, y: masterPoint.y, z: masterPoint.z },
                             { x: lowPt[pave[p].index + 1].x, y: lowPt[pave[p].index + 1].y, z: lowPt[pave[p].index + 1].z + paveT },
                             lowPt[pave[p].index + 1],
-                            // masterPoint,
                         ];
                         pts2D = [
                             lowPt2D[pave[p].index],
@@ -890,20 +875,13 @@ export function BarrierSectionPointV2(girderLayout, centerLineStations, girderBa
                         ];
                     }
                     new_PavementData[pave[p].key].points.push(pts.reverse());
-                    // section2DPavement["model"]["sectionView"].push(ToLine(pts2D, "GRAY", false));
                 }
-
-                // newbarrierDict["parent"].push(section2DBarrier);
-                // newpavementDict["parent"].push(section2DPavement);
             }
         }
         if (centerLineStations[i].key === "CRK7") {
             isSlab = false;
         }
     }
-    //곡률이 과다한 경우 리스트의 순서가 바뀔 우려가 있음 210128 by drlim
-    // leftBarrier.sort(function (a, b) { return a.name < b.name ? -1 : 1; })
-    // rightBarrier.sort(function (a, b) { return a.name < b.name ? -1 : 1; })
     for (let i in new_BarrierData) {
         newbarrierDict["children"].push(new_BarrierData[i]);
     }

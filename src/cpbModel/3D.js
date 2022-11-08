@@ -138,22 +138,21 @@ export function girderStation3D(girderStation, sectionPointDict, initPoint) {
     let grayPlan = new THREE.MeshBasicMaterial({ color: 0x777777, opacity: 0.5, transparent: true, side: THREE.DoubleSide });
     let yellowLine = new THREE.LineBasicMaterial({ color: 0xffff00 });
     let redLine = new THREE.LineBasicMaterial({ color: 0xff0000 });
-  
-    for (let i in girderStation) {
-      let pts =  girderStation[i].map(obj => new THREE.Vector3(obj.point.x - initPoint.x, obj.point.y - initPoint.y, obj.point.z));
-      let gl = new THREE.BufferGeometry().setFromPoints(pts);
-      let pts2 =  girderStation[i].map(obj => 
-        new THREE.Vector3(obj.point.x - initPoint.x, obj.point.y - initPoint.y, 
-          obj.point.z + sectionPointDict[obj.key].forward.webSide[1]));
-      let gl2 = new THREE.BufferGeometry().setFromPoints(pts2);
-      let pts3 =  girderStation[i].map(obj => 
-        new THREE.Vector3(obj.point.x - initPoint.x, obj.point.y - initPoint.y, 
-          obj.point.z + sectionPointDict[obj.key].forward.webSide[0]));
-      let gl3 = new THREE.BufferGeometry().setFromPoints(pts3);
-      modelGroup.add(new THREE.Line(gl, redLine));
-      modelGroup.add(new THREE.Line(gl2, yellowLine));
-      modelGroup.add(new THREE.Line(gl3, yellowLine));
 
+    for (let i in girderStation) {
+        let pts = girderStation[i].map(obj => new THREE.Vector3(obj.point.x - initPoint.x, obj.point.y - initPoint.y, obj.point.z));
+        let gl = new THREE.BufferGeometry().setFromPoints(pts);
+        let pts2 = girderStation[i].map(
+            obj => new THREE.Vector3(obj.point.x - initPoint.x, obj.point.y - initPoint.y, obj.point.z + sectionPointDict[obj.key].forward.webSide[1])
+        );
+        let gl2 = new THREE.BufferGeometry().setFromPoints(pts2);
+        let pts3 = girderStation[i].map(
+            obj => new THREE.Vector3(obj.point.x - initPoint.x, obj.point.y - initPoint.y, obj.point.z + sectionPointDict[obj.key].forward.webSide[0])
+        );
+        let gl3 = new THREE.BufferGeometry().setFromPoints(pts3);
+        modelGroup.add(new THREE.Line(gl, redLine));
+        modelGroup.add(new THREE.Line(gl2, yellowLine));
+        modelGroup.add(new THREE.Line(gl3, yellowLine));
 
         for (let j in girderStation[i]) {
             let key = girderStation[i][j].key;
@@ -233,7 +232,7 @@ export function girderStation3D(girderStation, sectionPointDict, initPoint) {
                     }
                 }
             } else if (key.includes("SP")) {
-              let shapeNode = [new Point(-1500,0), new Point(1500,0), new Point(1500,-3000), new Point(-1500,-3000)];
+                let shapeNode = [new Point(-1500, 0), new Point(1500, 0), new Point(1500, -3000), new Point(-1500, -3000)];
                 let point = girderStation[i][j].point;
                 let shape = new THREE.Shape();
                 let shapeNodeVectors = [];
@@ -248,9 +247,9 @@ export function girderStation3D(girderStation, sectionPointDict, initPoint) {
                 geometry.rotateZ(rad);
                 geometry.translate(point.x - initPoint.x, point.y - initPoint.y, point.z - initPoint.z);
                 modelGroup.add(new THREE.Mesh(geometry, magentaPlan));
-          } else if (["D", "V"].some(k=>key.includes(k))){
-                let shapeNode = [new Point(-1500,0), new Point(1500,0), new Point(1500,-3000), new Point(-1500,-3000)];
-                let point = toRefPoint(girderStation[i][j].point,true);
+            } else if (["D", "V"].some(k => key.includes(k))) {
+                let shapeNode = [new Point(-1500, 0), new Point(1500, 0), new Point(1500, -3000), new Point(-1500, -3000)];
+                let point = toRefPoint(girderStation[i][j].point, true);
                 let shape = new THREE.Shape();
                 let shapeNodeVectors = [];
                 for (let i = 0; i < shapeNode.length; i++) {
@@ -271,99 +270,115 @@ export function girderStation3D(girderStation, sectionPointDict, initPoint) {
 }
 
 export function GridView3D(girderStation, sectionPointDict, initPoint) {
-  let modelGroup = new THREE.Group();
-  let layer = 0; 
-  let aquaLine = new THREE.LineBasicMaterial({ color: 0x00ffff });
-  for (let i in girderStation) {
-      let upperPts = [];
-      let lowerPts = [];
-      for (let j in girderStation[i]) {
-          let key = girderStation[i][j].key;
-          let dz = 0;
-          let dz2 = 0;
-          let textDz = 0;
-          let textcolor = "white";
-          let bool = false;
-          // let pt;
-          if (key.includes("D") || key.includes("V") || key.includes("SP")) {
-              dz = 1000;
-              dz2 = 0;
-              if (key.includes("SP")) {
-                  textcolor = "green";
-                  textDz = 100;
-              } else if (key.includes("F")) {
-                  textcolor = "yellow";
-                  textDz = 100;
-              } else if (key.includes("TW")) {
-                  textcolor = "red";
-                  textDz = 200;
-              } else if (key.includes("TR")) {
-                  textcolor = "magenta";
-                  textDz = 300;
-              }
-              let pt0 = new THREE.Vector3(girderStation[i][j].point.x - initPoint.x, girderStation[i][j].point.y - initPoint.y, girderStation[i][j].point.z + dz - 100);
-              upperPts.push({ girderStation: girderStation[i][j].point.girderStation, point: pt0 });
-              bool = true;
-          } else if (key.includes("LC") || key.includes("H")){
-              dz = -4000;
-              dz2 = -3000;
-              if (key.includes("LC")) {
-                  textcolor = "green";
-                  textDz = -100;
-              } else if (key.includes("H")) {
-                  textcolor = "yellow";
-                  textDz = -100;
-              } else if (key.includes("BW")) {
-                  textcolor = "red";
-                  textDz = -200;
-              } else if (key.includes("BR")) {
-                  textcolor = "magenta";
-                  textDz = -300;
-              }
-              let pt0 = new THREE.Vector3(girderStation[i][j].point.x - initPoint.x, girderStation[i][j].point.y - initPoint.y, girderStation[i][j].point.z + dz + 100);
-              lowerPts.push({ girderStation: girderStation[i][j].point.girderStation, point: pt0 });
-              bool = true;
-          }
-          if (bool){
-            let pt = new THREE.Vector3(girderStation[i][j].point.x - initPoint.x, girderStation[i][j].point.y - initPoint.y, girderStation[i][j].point.z + dz);
-            let text = new SpriteText(key, 100, textcolor);
-            text.position.set(pt.x, pt.y, pt.z + textDz);
-            text.layers.set(layer);
-            // text.backgroundColor = "red"
-            modelGroup.add(text);
-            let pt2 = new THREE.Vector3(girderStation[i][j].point.x - initPoint.x, girderStation[i][j].point.y - initPoint.y, girderStation[i][j].point.z + dz2);
-            let geo = new THREE.BufferGeometry().setFromPoints([pt, pt2]);
-            modelGroup.add(new THREE.Line(geo, aquaLine));
-          }
-      }
-      for (let k = 0; k < upperPts.length - 1; k++) {
-          let dist = upperPts[k + 1].girderStation - upperPts[k].girderStation;
-          let p1 = upperPts[k + 1].point;
-          let p2 = upperPts[k].point;
-          if (dist > 0.1) {
-              let text = new SpriteText(dist.toFixed(0), 100, "green");
-              text.position.set((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, (p1.z + p2.z) / 2 + 100);
-              text.layers.set(layer);
-              // text.backgroundColor = "red"
-              modelGroup.add(text);
-              let geo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
-              modelGroup.add(new THREE.Line(geo, aquaLine));
-          }
-      }
-      for (let k = 0; k < lowerPts.length - 1; k++) {
-          let dist = lowerPts[k + 1].girderStation - lowerPts[k].girderStation;
-          let p1 = lowerPts[k + 1].point;
-          let p2 = lowerPts[k].point;
-          if (dist > 0.1) {
-              let text = new SpriteText(dist.toFixed(0), 150, "green");
-              text.position.set((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, (p1.z + p2.z) / 2 + 100);
-              text.layers.set(layer);
-              // text.backgroundColor = "red"
-              modelGroup.add(text);
-              let geo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
-              modelGroup.add(new THREE.Line(geo, aquaLine));
-          }
-      }
-  }
-  return modelGroup;
+    let modelGroup = new THREE.Group();
+    let layer = 0;
+    let aquaLine = new THREE.LineBasicMaterial({ color: 0x00ffff });
+    for (let i in girderStation) {
+        let upperPts = [];
+        let lowerPts = [];
+        for (let j in girderStation[i]) {
+            let key = girderStation[i][j].key;
+            let dz = 0;
+            let dz2 = 0;
+            let textDz = 0;
+            let textcolor = "white";
+            let bool = false;
+            // let pt;
+            if (key.includes("D") || key.includes("V") || key.includes("SP")) {
+                dz = 1000;
+                dz2 = 0;
+                if (key.includes("SP")) {
+                    textcolor = "green";
+                    textDz = 100;
+                } else if (key.includes("F")) {
+                    textcolor = "yellow";
+                    textDz = 100;
+                } else if (key.includes("TW")) {
+                    textcolor = "red";
+                    textDz = 200;
+                } else if (key.includes("TR")) {
+                    textcolor = "magenta";
+                    textDz = 300;
+                }
+                let pt0 = new THREE.Vector3(
+                    girderStation[i][j].point.x - initPoint.x,
+                    girderStation[i][j].point.y - initPoint.y,
+                    girderStation[i][j].point.z + dz - 100
+                );
+                upperPts.push({ girderStation: girderStation[i][j].point.girderStation, point: pt0 });
+                bool = true;
+            } else if (key.includes("LC") || key.includes("H")) {
+                dz = -4000;
+                dz2 = -3000;
+                if (key.includes("LC")) {
+                    textcolor = "green";
+                    textDz = -100;
+                } else if (key.includes("H")) {
+                    textcolor = "yellow";
+                    textDz = -100;
+                } else if (key.includes("BW")) {
+                    textcolor = "red";
+                    textDz = -200;
+                } else if (key.includes("BR")) {
+                    textcolor = "magenta";
+                    textDz = -300;
+                }
+                let pt0 = new THREE.Vector3(
+                    girderStation[i][j].point.x - initPoint.x,
+                    girderStation[i][j].point.y - initPoint.y,
+                    girderStation[i][j].point.z + dz + 100
+                );
+                lowerPts.push({ girderStation: girderStation[i][j].point.girderStation, point: pt0 });
+                bool = true;
+            }
+            if (bool) {
+                let pt = new THREE.Vector3(
+                    girderStation[i][j].point.x - initPoint.x,
+                    girderStation[i][j].point.y - initPoint.y,
+                    girderStation[i][j].point.z + dz
+                );
+                let text = new SpriteText(key, 100, textcolor);
+                text.position.set(pt.x, pt.y, pt.z + textDz);
+                text.layers.set(layer);
+                // text.backgroundColor = "red"
+                modelGroup.add(text);
+                let pt2 = new THREE.Vector3(
+                    girderStation[i][j].point.x - initPoint.x,
+                    girderStation[i][j].point.y - initPoint.y,
+                    girderStation[i][j].point.z + dz2
+                );
+                let geo = new THREE.BufferGeometry().setFromPoints([pt, pt2]);
+                modelGroup.add(new THREE.Line(geo, aquaLine));
+            }
+        }
+        for (let k = 0; k < upperPts.length - 1; k++) {
+            let dist = upperPts[k + 1].girderStation - upperPts[k].girderStation;
+            let p1 = upperPts[k + 1].point;
+            let p2 = upperPts[k].point;
+            if (dist > 0.1) {
+                let text = new SpriteText(dist.toFixed(0), 100, "green");
+                text.position.set((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, (p1.z + p2.z) / 2 + 100);
+                text.layers.set(layer);
+                // text.backgroundColor = "red"
+                modelGroup.add(text);
+                let geo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+                modelGroup.add(new THREE.Line(geo, aquaLine));
+            }
+        }
+        for (let k = 0; k < lowerPts.length - 1; k++) {
+            let dist = lowerPts[k + 1].girderStation - lowerPts[k].girderStation;
+            let p1 = lowerPts[k + 1].point;
+            let p2 = lowerPts[k].point;
+            if (dist > 0.1) {
+                let text = new SpriteText(dist.toFixed(0), 150, "green");
+                text.position.set((p1.x + p2.x) / 2, (p1.y + p2.y) / 2, (p1.z + p2.z) / 2 + 100);
+                text.layers.set(layer);
+                // text.backgroundColor = "red"
+                modelGroup.add(text);
+                let geo = new THREE.BufferGeometry().setFromPoints([p1, p2]);
+                modelGroup.add(new THREE.Line(geo, aquaLine));
+            }
+        }
+    }
+    return modelGroup;
 }
