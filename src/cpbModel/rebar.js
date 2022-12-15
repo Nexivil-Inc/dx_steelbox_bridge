@@ -1,7 +1,7 @@
 import { IntersectionPointOnSpline, LineLength, LineToOffsetSpline, MainPointGenerator, multiLineIntersect, overLap, Point, PointToGlobal, Rebar, RefPoint, StPointToParallel, TrimPolyLine, TwoLineIntersect, TwoPointsLength } from "@nexivil/package-modules";
 import { DivideRebarSpacing, ExtendPoint2D, InterSectByRefPoint, LineSegmentsToPolyline, LoftCutBySpline, SplineToGlobal, toRefPoint } from "@nexivil/package-modules/src/temp";
-import { ToGlobalPoint2 } from "../model/utils";
-import { InterSectBySpline, Polygon2DOffset, SewPolyline } from "./module";
+import { InterSectBySpline, Polygon2DOffset, SewPolyline } from "@nexivil/package-modules/src/temp";
+
 
 export function SlabRebarFn(deckModel, girderLayout, gridPointDict, deckPartInput, girderBaseInfo){
     let rebarDict = []; // children만들지 않음, parent 필요없음 검증

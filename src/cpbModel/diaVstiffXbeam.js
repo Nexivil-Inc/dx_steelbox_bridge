@@ -1,7 +1,7 @@
-import { Extrude, GetArcPoints, GetArcPoints2D, GetFilletPoints2D, PlateRestPoint, Point, PointToGlobal, PointToSkewedGlobal, RefPoint, StPoint } from "@nexivil/package-modules";
+import { Bolt, Extrude, GetArcPoints, GetArcPoints2D, GetFilletPoints2D, PlateRestPoint, Point, PointToGlobal, PointToSkewedGlobal, RefPoint, StPoint } from "@nexivil/package-modules";
 import { scallop, toRefPoint } from "@nexivil/package-modules/src/temp";
 import { THREE } from "global";
-import { Bolt } from "./3D";
+// import { Bolt } from "./3D";
 
 export function vPlateGenV2(points, centerPoint, scallopVertex, scallopR, urib, lrib) {
     let skew = centerPoint.skew;

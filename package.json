@@ -1,13 +1,14 @@
 {
-  "name": "dx_steelbox_bridge",
-  "version": "0.0.3",
+  "name": "dx_steelbox_bridge_drlim",
+  "version": "0.0.1",
   "description": "Package for design steelbox bridge",
   "private": false,
   "release_type": "node",
   "pre_release": false,
   "keywords": [
     "nexivil",
-    "steelbox"
+    "steelbox",
+    "cpb_girder"
   ],
   "files": [
     "build/bundle.js"
@@ -26,9 +27,10 @@
   },
   "dependencies": {
     "@design-express/node-scripts": "0.0.18",
-    "@nexivil/package-modules": "^0.3.0",
+    "@nexivil/package-modules": "^0.3.3",
     "package.json": "^2.0.1",
-    "three": "^0.141.0"
+    "three": "^0.146.0",
+    "three-spritetext": "^1.6.5"
   },
   "devDependencies": {
     "@rollup/plugin-commonjs": "^17.1.0",

@@ -1,4 +1,4 @@
-import {} from "global";
+// import {} from "global";
 import { GetFilletPoints2D, GetRefPoint, PointToGlobal } from "@nexivil/package-modules";
 import { ToDimCont } from "@nexivil/package-modules/src/temp";
 import { plateSectionRef } from "../reference/plate";

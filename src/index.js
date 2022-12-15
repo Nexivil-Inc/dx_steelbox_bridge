@@ -43,39 +43,39 @@ if (!String.prototype.format) {
 
 /* model */
 // grid
-LiteGraph.registerNodeType("model/GenGridInfo", GenGridInfo);
-LiteGraph.registerNodeType("model/FittingGridInput", FittingGridInput);
-// section
-LiteGraph.registerNodeType("model/GenBasicSections", GenBasicSections);
-LiteGraph.registerNodeType("model/GenSectionPointDict", GenSectionPointDict);
-LiteGraph.registerNodeType("model/GenDefaultETCPartData", GenDefaultETCPartData);
-// steelbox
-LiteGraph.registerNodeType("model/GenSteelBoxModel", GenMainPartModel);
-// diaphragm
-LiteGraph.registerNodeType("model/GenDiaphragmModel", GenDiaphragmModel);
-// stiffner
-LiteGraph.registerNodeType("model/GenVStiffModel", GenVStiffModel);
-LiteGraph.registerNodeType("model/GenHStiffModel", GenHStiffModel);
-// xbeam
-LiteGraph.registerNodeType("model/GenXBeamModel", GenXBeamModel);
-// splice
-LiteGraph.registerNodeType("model/GenSpliceModel", GenSpliceModel);
-// stud
-LiteGraph.registerNodeType("model/GenStudModel", GenStudModel);
-// jackup
-LiteGraph.registerNodeType("model/GenJackupModel", GenJackupModel);
-// support
-LiteGraph.registerNodeType("model/GenSupportModel", GenSupportModel);
-// deck
-LiteGraph.registerNodeType("model/GenDeckModel", GenDeckModel);
-LiteGraph.registerNodeType("model/GenBarrierModel", GenBarrierModel);
+// LiteGraph.registerNodeType("model/GenGridInfo", GenGridInfo);
+// LiteGraph.registerNodeType("model/FittingGridInput", FittingGridInput);
+// // section
+// LiteGraph.registerNodeType("model/GenBasicSections", GenBasicSections);
+// LiteGraph.registerNodeType("model/GenSectionPointDict", GenSectionPointDict);
+// LiteGraph.registerNodeType("model/GenDefaultETCPartData", GenDefaultETCPartData);
+// // steelbox
+// LiteGraph.registerNodeType("model/GenSteelBoxModel", GenMainPartModel);
+// // diaphragm
+// LiteGraph.registerNodeType("model/GenDiaphragmModel", GenDiaphragmModel);
+// // stiffner
+// LiteGraph.registerNodeType("model/GenVStiffModel", GenVStiffModel);
+// LiteGraph.registerNodeType("model/GenHStiffModel", GenHStiffModel);
+// // xbeam
+// LiteGraph.registerNodeType("model/GenXBeamModel", GenXBeamModel);
+// // splice
+// LiteGraph.registerNodeType("model/GenSpliceModel", GenSpliceModel);
+// // stud
+// LiteGraph.registerNodeType("model/GenStudModel", GenStudModel);
+// // jackup
+// LiteGraph.registerNodeType("model/GenJackupModel", GenJackupModel);
+// // support
+// LiteGraph.registerNodeType("model/GenSupportModel", GenSupportModel);
+// // deck
+// LiteGraph.registerNodeType("model/GenDeckModel", GenDeckModel);
+// LiteGraph.registerNodeType("model/GenBarrierModel", GenBarrierModel);
 
-/* drawing */
-// girder
-LiteGraph.registerNodeType("model/GenBoxGirder2D", GenBoxGirder2D);
+// /* drawing */
+// // girder
+// LiteGraph.registerNodeType("model/GenBoxGirder2D", GenBoxGirder2D);
 
-/* test */
-LiteGraph.registerNodeType("model/compareTest", compareTest);
+// /* test */
+// LiteGraph.registerNodeType("model/compareTest", compareTest);
 
 
 /*drlim_node for CPB girder bridge*/

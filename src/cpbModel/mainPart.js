@@ -1,6 +1,6 @@
-import { GetArcPoints, Loft, PointToSkewedGlobal, TwoLineIntersect } from "@nexivil/package-modules";
+import { GetArcPoints, Loft, PointToSkewedGlobal, TwoLineIntersect, SteelBox} from "@nexivil/package-modules";
 import { DividingPoint } from "@nexivil/package-modules/src/temp";
-import { FilletPoints, SteelBox } from "./3D";
+import { FilletPoints } from "./3D";
 import { DiaShapeDictV2, VstiffShapeDictV2, XbeamDictV2 } from "./diaVstiffXbeam";
 import { SplicePlateV2 } from "./etcPart";
 

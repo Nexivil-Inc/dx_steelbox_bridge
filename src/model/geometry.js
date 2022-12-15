@@ -1,4 +1,7 @@
-import { THREE, BufferGeometryUtils } from "global";
+// import { THREE, BufferGeometryUtils } from "global";
+import * as THREE from "three";
+import {mergeBufferGeometries} from "three/examples/js/utils/BufferGeometryUtils";
+
 
 export function GenSteelBoxGeometry(steelBoxDict, initPoint) {
     let Geos = [];
@@ -37,7 +40,7 @@ export function GenSteelBoxGeometry(steelBoxDict, initPoint) {
     });
     let mGeo;
     if (Geos.length !== 0) {
-        mGeo = BufferGeometryUtils.mergeBufferGeometries(Geos);
+        mGeo = mergeBufferGeometries(Geos);
     }
     return mGeo;
 }
@@ -58,7 +61,7 @@ export function GenBoltGeometry(Thickness, zPosition, rotationY, rotationX, poin
         geometry.translate(point.x - initPoint.x, point.y - initPoint.y, point.z - initPoint.z);
         geometryArr.push(geometry);
     }
-    return BufferGeometryUtils.mergeBufferGeometries(geometryArr);
+    return mergeBufferGeometries(geometryArr);
 }
 
 export function GenStudGeometry(rotX, rotY, rotZ, points, stud, initPoint) {
@@ -87,7 +90,7 @@ export function GenStudGeometry(rotX, rotY, rotZ, points, stud, initPoint) {
         geometry2.translate(point.x - initPoint.x, point.y - initPoint.y, point.z - initPoint.z);
         Geos.push(geometry, geometry2);
     }
-    return BufferGeometryUtils.mergeBufferGeometries(Geos);
+    return mergeBufferGeometries(Geos);
 }
 
 export function GenBTConcStudGeometry(rotX, rotY, rotZ, points, stud, initPoint) {
@@ -109,7 +112,7 @@ export function GenBTConcStudGeometry(rotX, rotY, rotZ, points, stud, initPoint)
 
         geometry3.translate(0, stud.headDepth / 2, 0);
         geometry3.rotateX(Math.PI / 2 + rotationX);
-        let tempGeo = BufferGeometryUtils.mergeBufferGeometries([geometry, geometry2, geometry3]);
+        let tempGeo = mergeBufferGeometries([geometry, geometry2, geometry3]);
         if (rotZ) {
             tempGeo.rotateY(rotationY);
             tempGeo.rotateZ(rotZ);
@@ -118,5 +121,5 @@ export function GenBTConcStudGeometry(rotX, rotY, rotZ, points, stud, initPoint)
         Geos.push(tempGeo);
     }
 
-    return BufferGeometryUtils.mergeBufferGeometries(Geos);
+    return mergeBufferGeometries(Geos);
 }

@@ -6,6 +6,7 @@ export function GridInputAutoGen(girderLayout, girderBaseInfo) {
     let common = girderBaseInfo.common;
     let auto = girderBaseInfo.auto;
     let sShape = girderBaseInfo.SEShape.start;
+    
     let eShape = girderBaseInfo.SEShape.end;
     const SEShape = {
         "start": { A: sShape.A, D: sShape.B, F: sShape.C, G: sShape.D, isStraight: true, endSlabH: end.SlabH, slabH: support.SlabH },

@@ -1,6 +1,6 @@
-import { Extrude, Loft, PlateRestPoint, Point, PointToSkewedGlobal, RefPoint, TwoPointsLength } from "@nexivil/package-modules";
+import { Extrude, Loft, PlateRestPoint, Point, PointToSkewedGlobal, RefPoint, TwoPointsLength, Bolt } from "@nexivil/package-modules";
 import { DivideRebarSpacing, scallop, Stud, toRefPoint } from "@nexivil/package-modules/src/temp";
-import { Bolt } from "./3D";
+// import { Bolt } from "./3D";
 import { BoltLayout, vPlateGenV2 } from "./diaVstiffXbeam";
 import { BottomRebarModel } from "./rebar";
 
